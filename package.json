@@ -1,0 +1,35 @@
+{
+  "name": "lskypro-auto-upload",
+  "version": "1.1.0",
+  "type": "module",
+  "description": "Auto upload images from clipboard to LskyPro",
+  "main": "main.js",
+  "scripts": {
+    "dev": "rollup --config rollup.config.js -w",
+    "build": "rollup --config rollup.config.js"
+  },
+  "keywords": [
+    "obsidian",
+    "lsky",
+    "upload",
+    "auto",
+    "clipboard"
+  ],
+  "author": "nekoutarou",
+  "license": "MIT",
+  "devDependencies": {
+    "@rollup/plugin-commonjs": "^28.0.1",
+    "@rollup/plugin-json": "^6.1.0",
+    "@rollup/plugin-node-resolve": "^16.0.0",
+    "@rollup/plugin-typescript": "^12.1.0",
+    "@types/node": "^22.8.0",
+    "obsidian": "^1.6.7",
+    "rollup": "^4.22.4",
+    "tslib": "^2.8.0",
+    "typescript": "^5.6.3"
+  },
+  "dependencies": {
+    "fix-path": "^5.0.0",
+    "image-type": "^5.2.0"
+  }
+}

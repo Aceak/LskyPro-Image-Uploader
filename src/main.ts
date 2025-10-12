@@ -118,23 +118,50 @@ export default class imageAutoUploadPlugin extends Plugin {
           }
           const selection = editor.getSelection();
           if (selection) {
+            // 1. 检查是否为Markdown链接格式 ![]()
             const markdownRegex = /!\[.*\]\((.*)\)/g;
             const markdownMatch = markdownRegex.exec(selection);
+            
             if (markdownMatch && markdownMatch.length > 1) {
               const markdownUrl = markdownMatch[1];
-              if (
-                this.settings.uploadedImages.find(
-                  (item: { imgUrl: string }) => item.imgUrl === markdownUrl
-                )
-              ) {
-                //TODO 选中连接，右键可以上传
-                //this.addMenu(menu, markdownUrl, editor);
+              // 检查是否为本地路径（不以http开头）
+              if (!markdownUrl.startsWith('http')) {
+                // 添加上传到图床的菜单项
+                this.addMenu(menu, markdownUrl, editor);
+              }
+            } 
+            // 2. 检查是否为Wiki链接格式 ![[...]] 或 [[...]]
+            else {
+              const wikiLinkRegex = /^!?\[\[(.*?)\]\]$/;
+              const wikiLinkMatch = wikiLinkRegex.exec(selection);
+              
+              if (wikiLinkMatch && wikiLinkMatch.length > 1) {
+                const wikiLinkPath = wikiLinkMatch[1];
+                // 检查是否为本地路径（不以http开头）
+                if (!wikiLinkPath.startsWith('http')) {
+                  // 添加上传到图床的菜单项
+                  this.addMenu(menu, wikiLinkPath, editor);
+                }
               }
             }
           }
         }
       )
     );
+  }
+
+  // 添加右键菜单项
+  addMenu(menu: Menu, imageUrl: string, editor: Editor) {
+    menu.addItem((item) => {
+      item
+        .setTitle('上传到图床')
+        .setIcon('upload')
+        .onClick(() => {
+          console.log(`准备上传图片到图床: ${imageUrl}`);
+          // 此处将来会实现实际的上传功能
+          // 目前仅输出日志用于调试
+        });
+    });
   }
 
   async downloadAllImageFiles() {

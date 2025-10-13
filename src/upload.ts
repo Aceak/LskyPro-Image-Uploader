@@ -55,13 +55,30 @@ export class LskyProUploader {
     this.settings = settings;
     this.app = app;
     this.version = version;
+    
+    // 初始化配置
+    this.initializeConfig();
+  }
 
-    const apiPath = version === "v1" ? "api/v1/upload" : "api/v2/upload";
+  /**
+   * 初始化或更新配置
+   */
+  private initializeConfig() {
+    const apiPath = this.version === "v1" ? "api/v1/upload" : "api/v2/upload";
     this.lskyUrl = this.settings.uploadServer.endsWith("/")
       ? this.settings.uploadServer + apiPath
       : this.settings.uploadServer + "/" + apiPath;
 
     this.lskyToken = "Bearer " + this.settings.token;
+  }
+
+  /**
+   * 更新配置并重新初始化
+   * @param settings 新的设置对象
+   */
+  updateSettings(settings: PluginSettings) {
+    this.settings = settings;
+    this.initializeConfig();
   }
 
   private getRequestOptions(file: File): RequestInit {

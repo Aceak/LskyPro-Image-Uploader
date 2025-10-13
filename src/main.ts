@@ -48,9 +48,14 @@ export default class imageAutoUploadPlugin extends Plugin {
 
   // 重新初始化上传器（当设置更改时调用）
   reinitUploader() {
-    // 根据设置选择上传器版本
-    const version = this.settings.uploader === "LskyPro-V1" ? 'v1' : 'v2';
-    this.uploader = new LskyProUploader(this.settings, this.app, version);
+    // 如果上传器已存在，直接更新设置而不是创建新实例
+    if (this.uploader) {
+      this.uploader.updateSettings(this.settings);
+    } else {
+      // 如果上传器不存在，创建新实例
+      const version = this.settings.uploader === "LskyPro-V1" ? 'v1' : 'v2';
+      this.uploader = new LskyProUploader(this.settings, this.app, version);
+    }
   }
 
   onunload() { }
@@ -159,7 +164,6 @@ export default class imageAutoUploadPlugin extends Plugin {
         .setIcon('upload')
         .onClick(async () => {
           const file = resolveImageFile(this.app, imageUrl);
-          console.log(`resolveImageFile: ${file?.path}`);
           if (!file) {
             console.error(`未找到图片文件: ${imageUrl}`);
              new Notice("未找到图片文件");

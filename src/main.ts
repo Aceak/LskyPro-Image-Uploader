@@ -18,8 +18,9 @@ import {
   isAssetTypeAnImage,
   getUrlAsset,
   arrayToObject,
+  resolveImageFile
 } from "./utils";
-import { LskyProUploader } from "./uploader"; // 统一支持v1和v2版本的上传器
+import { LskyProUploader } from "./upload"; // 统一支持v1和v2版本的上传器
 import Helper from "./helper";
 
 import { SettingTab, PluginSettings, DEFAULT_SETTINGS } from "./setting";
@@ -156,10 +157,23 @@ export default class imageAutoUploadPlugin extends Plugin {
       item
         .setTitle('上传到图床')
         .setIcon('upload')
-        .onClick(() => {
-          console.log(`准备上传图片到图床: ${imageUrl}`);
-          // 此处将来会实现实际的上传功能
-          // 目前仅输出日志用于调试
+        .onClick(async () => {
+          const file = resolveImageFile(this.app, imageUrl);
+          console.log(`resolveImageFile: ${file?.path}`);
+          if (!file) {
+            console.error(`未找到图片文件: ${imageUrl}`);
+             new Notice("未找到图片文件");
+             return;
+          }
+          const result = await this.uploader.uploadSingleFile(file.path);
+          if (result?.success && result?.url) {
+            new Notice(`上传成功`);
+            editor.replaceSelection(`![](${result.url})`);
+          } else {
+            console.error
+            console.error(`上传失败: ${result?.msg}`);
+            new Notice('上传失败，请检查网络或配置');
+          }
         });
     });
   }
@@ -414,10 +428,10 @@ export default class imageAutoUploadPlugin extends Plugin {
       new Notice(`共找到${imageList.length}个图像文件，开始上传`);
     }
 
-    this.uploader.uploadFilesByPath(imageList.map(item => item.obspath)).then(res => {
+    this.uploader.uploadFiles(imageList.map(item => item.obspath)).then(res => {
       if (res.success) {
         let uploadUrlList = res.result;
-        const uploadUrlFullResultList = res.fullResult || [];
+        const uploadUrlFullResultList = res.result || [];
 
         this.settings.uploadedImages = [
           ...(this.settings.uploadedImages || []),
@@ -480,7 +494,7 @@ export default class imageAutoUploadPlugin extends Plugin {
 
             if (imageList.length !== 0) {
               this.uploader
-                .uploadFilesByPath(imageList.map(item => item.path))
+                .uploadFiles(imageList.map(item => item.path))
                 .then(res => {
                   let value = this.helper.getValue();
                   if (res.success) {
@@ -494,7 +508,7 @@ export default class imageAutoUploadPlugin extends Plugin {
                       );
                     });
                     this.helper.setValue(value);
-                    const uploadUrlFullResultList = res.fullResult || [];
+                    const uploadUrlFullResultList = res.result || [];
                     this.settings.uploadedImages = [
                       ...(this.settings.uploadedImages || []),
                       ...uploadUrlFullResultList,
@@ -512,13 +526,13 @@ export default class imageAutoUploadPlugin extends Plugin {
             this.uploadFileAndEmbedImgurImage(
               editor,
               async (editor: Editor, pasteId: string) => {
-                let res = await this.uploader.uploadFileByClipboard(evt);
-                if (res.code !== 0) {
+                let res = await this.uploader.uploadFromClipboard(evt);
+                if (!res.success) {
                   this.handleFailedUpload(editor, pasteId, res.msg);
                   return;
                 }
-                const url = res.data;
-                const uploadUrlFullResultList = res.fullResult || [];
+                const url = res.url || "";
+                const uploadUrlFullResultList = res.result || [];
                 this.settings.uploadedImages = [
                   ...(this.settings.uploadedImages || []),
                   ...uploadUrlFullResultList,
@@ -553,7 +567,7 @@ export default class imageAutoUploadPlugin extends Plugin {
             const data = await this.uploader.uploadFiles(Array.from(files));
 
             if (data.success) {
-              const uploadUrlFullResultList = data.fullResult ?? [];
+              const uploadUrlFullResultList = data.result ?? [];
               this.settings.uploadedImages = [
                 ...(this.settings.uploadedImages ?? []),
                 ...uploadUrlFullResultList,

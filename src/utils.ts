@@ -1,5 +1,6 @@
 import { extname } from "path";
 import { Readable } from "stream";
+import type { App, TFile } from 'obsidian';
 
 export interface IStringKeyMap<T> {
   [key: string]: T;
@@ -65,4 +66,29 @@ export function arrayToObject<T extends AnyObj>(
     obj[element[key]] = element;
   });
   return obj;
+}
+
+export function resolveImageFile(app: App, rawLink: string): TFile | null {
+  if (!rawLink) return null;
+
+  let path = rawLink.trim();
+
+  const mdMatch = path.match(/!\[.*?\]\((.*?)\)/);
+  if (mdMatch) path = mdMatch[1];
+
+  const wikiMatch = path.match(/^!?\[\[(.*?)\]\]$/);
+  if (wikiMatch) path = wikiMatch[1];
+
+  path = path.replace(/^!/, '').trim();
+
+  try {
+    if (/%[0-9A-Fa-f]{2}/.test(path)) path = decodeURIComponent(path);
+  } catch (e) {
+    console.warn('[resolveImageFile] decodeURIComponent failed:', e);
+  }
+
+  const activePath = app.workspace.getActiveFile()?.path || '';
+  const file = app.metadataCache.getFirstLinkpathDest(path, activePath);
+
+  return file;
 }

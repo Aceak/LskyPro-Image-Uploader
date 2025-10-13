@@ -1,3 +1,5 @@
+// 此代码已被废弃，已在upload.ts中重新实现
+
 import { PluginSettings } from "./setting";
 import { App } from "obsidian";
 

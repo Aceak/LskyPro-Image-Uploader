@@ -4,9 +4,9 @@
 
 # npm
 node_modules
-package-lock.json
 # build
 *.js.map
+main.js
 
 # ignore
 data.json

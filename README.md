@@ -1,7 +1,7 @@
 # LskyPro Upload V2
 **An automatic image uploader plugin for Obsidian**
 
-English | [简体中文](README.md)
+English | [简体中文](README_zh.md)
 
 > A lightweight and efficient image uploader plugin for Obsidian,  
 > supporting LskyPro V1 / V2 APIs, multiple upload methods, and batch operations.

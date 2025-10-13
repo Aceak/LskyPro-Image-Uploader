@@ -1,7 +1,7 @@
 # LskyPro Upload V2  
 **适用于 Obsidian 的自动图床上传插件**
 
-简体中文 | [English](README.en.md)
+简体中文 | [English](README.md)
 
 > 一款为 Obsidian 打造的高效图片上传工具，让您的笔记图片管理更加自动化与轻量化。  
 > 支持 LskyPro V1 / V2 API、多种上传方式与批量处理。

@@ -77,7 +77,7 @@ export class SettingTab extends PluginSettingTab {
         );
 
     // 无论选择哪个版本，都显示基本设置
-    new Setting(containerEl)
+      new Setting(containerEl)
       .setName("LskyPro 域名")
       .setDesc("LskyPro 域名（不需要填写完整的API路径）")
       .addText(text =>
@@ -87,6 +87,8 @@ export class SettingTab extends PluginSettingTab {
           .onChange(async key => {
             this.plugin.settings.uploadServer = key;
             await this.plugin.saveSettings();
+            // 重新初始化上传器以应用新域名
+            this.plugin.reinitUploader();
           })
       );
       new Setting(containerEl)
@@ -99,6 +101,8 @@ export class SettingTab extends PluginSettingTab {
           .onChange(async key => {
             this.plugin.settings.token = key;
             await this.plugin.saveSettings();
+            // 重新初始化上传器以应用新Token
+            this.plugin.reinitUploader();
           })
       );
       
@@ -114,6 +118,8 @@ export class SettingTab extends PluginSettingTab {
           .onChange(async key => {
             this.plugin.settings.storage_id = key;
             await this.plugin.saveSettings();
+            // 重新初始化上传器以应用新存储ID
+            this.plugin.reinitUploader();
           })
       );
     } else if (this.plugin.settings.uploader === "LskyPro-V1") {
@@ -127,6 +133,8 @@ export class SettingTab extends PluginSettingTab {
           .onChange(async key => {
             this.plugin.settings.strategy_id = key;
             await this.plugin.saveSettings();
+            // 重新初始化上传器以应用新策略ID
+            this.plugin.reinitUploader();
           })
       );
     }

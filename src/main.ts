@@ -18,8 +18,9 @@ import {
   isAssetTypeAnImage,
   getUrlAsset,
   arrayToObject,
+  resolveImageFile
 } from "./utils";
-import { LskyProUploader } from "./uploader"; // 统一支持v1和v2版本的上传器
+import { LskyProUploader } from "./upload"; // 统一支持v1和v2版本的上传器
 import Helper from "./helper";
 
 import { SettingTab, PluginSettings, DEFAULT_SETTINGS } from "./setting";
@@ -47,9 +48,14 @@ export default class imageAutoUploadPlugin extends Plugin {
 
   // 重新初始化上传器（当设置更改时调用）
   reinitUploader() {
-    // 根据设置选择上传器版本
-    const version = this.settings.uploader === "LskyPro-V1" ? 'v1' : 'v2';
-    this.uploader = new LskyProUploader(this.settings, this.app, version);
+    // 如果上传器已存在，直接更新设置而不是创建新实例
+    if (this.uploader) {
+      this.uploader.updateSettings(this.settings);
+    } else {
+      // 如果上传器不存在，创建新实例
+      const version = this.settings.uploader === "LskyPro-V1" ? 'v1' : 'v2';
+      this.uploader = new LskyProUploader(this.settings, this.app, version);
+    }
   }
 
   onunload() { }
@@ -118,23 +124,62 @@ export default class imageAutoUploadPlugin extends Plugin {
           }
           const selection = editor.getSelection();
           if (selection) {
+            // 1. 检查是否为Markdown链接格式 ![]()
             const markdownRegex = /!\[.*\]\((.*)\)/g;
             const markdownMatch = markdownRegex.exec(selection);
+            
             if (markdownMatch && markdownMatch.length > 1) {
               const markdownUrl = markdownMatch[1];
-              if (
-                this.settings.uploadedImages.find(
-                  (item: { imgUrl: string }) => item.imgUrl === markdownUrl
-                )
-              ) {
-                //TODO 选中连接，右键可以上传
-                //this.addMenu(menu, markdownUrl, editor);
+              // 检查是否为本地路径（不以http开头）
+              if (!markdownUrl.startsWith('http')) {
+                // 添加上传到图床的菜单项
+                this.addMenu(menu, markdownUrl, editor);
+              }
+            } 
+            // 2. 检查是否为Wiki链接格式 ![[...]] 或 [[...]]
+            else {
+              const wikiLinkRegex = /^!?\[\[(.*?)\]\]$/;
+              const wikiLinkMatch = wikiLinkRegex.exec(selection);
+              
+              if (wikiLinkMatch && wikiLinkMatch.length > 1) {
+                const wikiLinkPath = wikiLinkMatch[1];
+                // 检查是否为本地路径（不以http开头）
+                if (!wikiLinkPath.startsWith('http')) {
+                  // 添加上传到图床的菜单项
+                  this.addMenu(menu, wikiLinkPath, editor);
+                }
               }
             }
           }
         }
       )
     );
+  }
+
+  // 添加右键菜单项
+  addMenu(menu: Menu, imageUrl: string, editor: Editor) {
+    menu.addItem((item) => {
+      item
+        .setTitle('上传到图床')
+        .setIcon('upload')
+        .onClick(async () => {
+          const file = resolveImageFile(this.app, imageUrl);
+          if (!file) {
+            console.error(`未找到图片文件: ${imageUrl}`);
+             new Notice("未找到图片文件");
+             return;
+          }
+          const result = await this.uploader.uploadSingleFile(file.path);
+          if (result?.success && result?.url) {
+            new Notice(`上传成功`);
+            editor.replaceSelection(`![](${result.url})`);
+          } else {
+            console.error
+            console.error(`上传失败: ${result?.msg}`);
+            new Notice('上传失败，请检查网络或配置');
+          }
+        });
+    });
   }
 
   async downloadAllImageFiles() {
@@ -387,10 +432,10 @@ export default class imageAutoUploadPlugin extends Plugin {
       new Notice(`共找到${imageList.length}个图像文件，开始上传`);
     }
 
-    this.uploader.uploadFilesByPath(imageList.map(item => item.obspath)).then(res => {
+    this.uploader.uploadFiles(imageList.map(item => item.obspath)).then(res => {
       if (res.success) {
         let uploadUrlList = res.result;
-        const uploadUrlFullResultList = res.fullResult || [];
+        const uploadUrlFullResultList = res.result || [];
 
         this.settings.uploadedImages = [
           ...(this.settings.uploadedImages || []),
@@ -453,7 +498,7 @@ export default class imageAutoUploadPlugin extends Plugin {
 
             if (imageList.length !== 0) {
               this.uploader
-                .uploadFilesByPath(imageList.map(item => item.path))
+                .uploadFiles(imageList.map(item => item.path))
                 .then(res => {
                   let value = this.helper.getValue();
                   if (res.success) {
@@ -467,7 +512,7 @@ export default class imageAutoUploadPlugin extends Plugin {
                       );
                     });
                     this.helper.setValue(value);
-                    const uploadUrlFullResultList = res.fullResult || [];
+                    const uploadUrlFullResultList = res.result || [];
                     this.settings.uploadedImages = [
                       ...(this.settings.uploadedImages || []),
                       ...uploadUrlFullResultList,
@@ -485,13 +530,13 @@ export default class imageAutoUploadPlugin extends Plugin {
             this.uploadFileAndEmbedImgurImage(
               editor,
               async (editor: Editor, pasteId: string) => {
-                let res = await this.uploader.uploadFileByClipboard(evt);
-                if (res.code !== 0) {
+                let res = await this.uploader.uploadFromClipboard(evt);
+                if (!res.success) {
                   this.handleFailedUpload(editor, pasteId, res.msg);
                   return;
                 }
-                const url = res.data;
-                const uploadUrlFullResultList = res.fullResult || [];
+                const url = res.url || "";
+                const uploadUrlFullResultList = res.result || [];
                 this.settings.uploadedImages = [
                   ...(this.settings.uploadedImages || []),
                   ...uploadUrlFullResultList,
@@ -526,7 +571,7 @@ export default class imageAutoUploadPlugin extends Plugin {
             const data = await this.uploader.uploadFiles(Array.from(files));
 
             if (data.success) {
-              const uploadUrlFullResultList = data.fullResult ?? [];
+              const uploadUrlFullResultList = data.result ?? [];
               this.settings.uploadedImages = [
                 ...(this.settings.uploadedImages ?? []),
                 ...uploadUrlFullResultList,

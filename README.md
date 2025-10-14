@@ -142,4 +142,4 @@ Special thanks to the following projects for inspiration and reference:
 
 - Author: **3kk0**  
 - Blog: [https://wiki.stxwer.top](https://wiki.stxwer.top)  
-- Project: [GitHub - 3kk0/LskyPro-Upload-V2](https://github.com/3kk0/LskyPro-Upload-V2)
+- Project: [GitHub - Aceak/LskyPro-Upload-V2](https://github.com/Aceak/LskyPro-Upload-V2)

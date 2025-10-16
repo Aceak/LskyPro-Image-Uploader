@@ -19,12 +19,15 @@ import {
   resolveImageFile,
   getPlatformEnv,
   IMAGE_EXT_LIST,
+  dbg,
+  warn,
+  error,
 } from "./utils";
 import { LskyProUploader } from "./upload"; // 统一支持v1和v2版本的上传器
 import Helper from "./helper";
 
 import { SettingTab, PluginSettings, DEFAULT_SETTINGS } from "./setting";
-import { t } from "./lang/helpers";
+import { t } from "./lang/i18n";
 
 interface Image {
   path: string;
@@ -67,7 +70,7 @@ export default class imageAutoUploadPlugin extends Plugin {
     this.helper = new Helper(this.app);
     
     // 根据设置选择上传器版本
-    const version = this.settings.uploader === "LskyPro-V1" ? 'v1' : 'v2';
+    const version = this.settings.uploader === 'LskyPro-V1' ? 'v1' : 'v2';
     this.uploader = new LskyProUploader(this.settings, this.app, version);
     
     if (!['LskyPro-V2', 'LskyPro-V1'].includes(this.settings.uploader)) {
@@ -75,7 +78,7 @@ export default class imageAutoUploadPlugin extends Plugin {
     }
 
     addIcon(
-      "upload",
+      'upload',
       `<svg t="1636630783429" class="icon" viewBox="0 0 100 100" version="1.1" p-id="4649" xmlns="http://www.w3.org/2000/svg">
       <path d="M 71.638 35.336 L 79.408 35.336 C 83.7 35.336 87.178 38.662 87.178 42.765 L 87.178 84.864 C 87.178 88.969 83.7 92.295 79.408 92.295 L 17.249 92.295 C 12.957 92.295 9.479 88.969 9.479 84.864 L 9.479 42.765 C 9.479 38.662 12.957 35.336 17.249 35.336 L 25.019 35.336 L 25.019 42.765 L 17.249 42.765 L 17.249 84.864 L 79.408 84.864 L 79.408 42.765 L 71.638 42.765 L 71.638 35.336 Z M 49.014 10.179 L 67.326 27.688 L 61.835 32.942 L 52.849 24.352 L 52.849 59.731 L 45.078 59.731 L 45.078 24.455 L 36.194 32.947 L 30.702 27.692 L 49.012 10.181 Z" p-id="4650" fill="#8a8a8a"></path>
     </svg>`
@@ -84,8 +87,8 @@ export default class imageAutoUploadPlugin extends Plugin {
     this.addSettingTab(new SettingTab(this.app, this));
 
     this.addCommand({
-      id: "Upload all images",
-      name: "Upload all images",
+      id: 'Upload all images',
+      name: t('Upload all images'),
       checkCallback: (checking: boolean) => {
         let leaf = this.app.workspace.getActiveViewOfType(MarkdownView);
         if (leaf) {
@@ -119,7 +122,7 @@ export default class imageAutoUploadPlugin extends Plugin {
   registerSelection() {
     this.registerEvent(
       this.app.workspace.on(
-        "editor-menu",
+        'editor-menu',
         (menu: Menu, editor: Editor, info: MarkdownView | MarkdownFileInfo) => {
           if (this.app.workspace.getLeavesOfType('markdown').length === 0) {
             return;
@@ -167,7 +170,7 @@ export default class imageAutoUploadPlugin extends Plugin {
         .onClick(async () => {
           const file = resolveImageFile(this.app, imageUrl);
           if (!file) {
-            console.error(t('Could not find image file')+':'+imageUrl);
+            error(t('Could not find image file')+':'+imageUrl);
             new Notice(t('Could not find image file'));
             return;
           }
@@ -176,8 +179,8 @@ export default class imageAutoUploadPlugin extends Plugin {
             new Notice(t('Upload success'));
             editor.replaceSelection(`![](${result.url})`);
           } else {
-            console.error(t('Upload failed')+':'+result?.msg);
-            new Notice(t('Upload failed, please check console for more information'));
+            error(t('Upload failed')+':'+result?.msg);
+            new Notice(t('Upload failed Notice'));
           }
         });
     });
@@ -213,7 +216,7 @@ export default class imageAutoUploadPlugin extends Plugin {
       const match = url.match(/\.(\w+)(\?|#|$)/);
       if (!match) {
         skipped++;
-        console.warn(t('Skipped file with no extension')+':'+url);
+        warn(t('Skipped file with no extension')+':'+url);
         continue;
       }
 
@@ -225,7 +228,7 @@ export default class imageAutoUploadPlugin extends Plugin {
       ];
       if (!allowedExts.includes(ext)) {
         skipped++;
-        console.warn(t('Skipped file with unsupported image type')+':'+ext);
+        warn(t('Skipped file with unsupported image type')+':'+ext);
         continue;
       }
 
@@ -247,8 +250,8 @@ export default class imageAutoUploadPlugin extends Plugin {
           });
         }
       } catch (err) {
-        new Notice(t('Download failed, please check console for more information'));
-        console.error(t('Download failed') + ':' + err);
+        new Notice(t('Download failed Notice'));
+        error(t('Download failed') + ':' + err);
       }
     }
 
@@ -265,13 +268,12 @@ export default class imageAutoUploadPlugin extends Plugin {
 
     const failed = count - imageArray.length - skipped;
     new Notice(
-      t('imageDownloadReport', {
+      t('downloadReport', {
         count,
-
         success: imageArray.length,
         skipped,
-        failed: failed
-      })
+        failed
+        })
     );
   }
 
@@ -292,8 +294,8 @@ export default class imageAutoUploadPlugin extends Plugin {
     // 当前文件夹下的子文件夹
     if (assetFolder.startsWith("./")) {
       assetFolder = assetFolder.substring(1);
-      let pathTem = parentPath + (assetFolder==="/"?"":assetFolder);
-      while(pathTem.startsWith("/")) {
+      let pathTem = parentPath + (assetFolder==='/'?'':assetFolder);
+      while(pathTem.startsWith('/')) {
         pathTem = pathTem.substring(1);
       }
       return pathTem;
@@ -317,7 +319,7 @@ export default class imageAutoUploadPlugin extends Plugin {
       // 从 URL 提取扩展名
       const match = url.match(/\.(\w+)(\?|#|$)/);
       if (!match) {
-        console.warn(t('Skipped file with no extension')+':'+url);
+        warn(t('Skipped file with no extension')+':'+url);
         return { ok: false, msg: t('No file extension in URL') };
       }
 
@@ -327,12 +329,12 @@ export default class imageAutoUploadPlugin extends Plugin {
       // 使用工具类中定义的图片扩展名列表，去掉点号并转换为小写
       const allowedExts = IMAGE_EXT_LIST.map(ext => ext.slice(1).toLowerCase());
       if (!allowedExts.includes(ext)) {
-        console.warn(t(`Skipped file with unsupported image type: .${ext}`));
-        return { ok: false, msg: t("Unsupported image type: .${ext}") };
+        warn(t('Skipped file with unsupported image type')+':'+ext);
+        return { ok: false, msg: t('Unsupported image type')+':'+ext };
       }
 
       // 文件名清理
-      const safeName = decodeURI(filename).replace(/[\\/:\*\?"<>|]/g, "-");
+      const safeName = decodeURI(filename).replace(/[\\/:\*\?"<>|]/g, '-');
       const savePath = `${folderPath}/${safeName}.${ext}`;
 
       // 写入 vault
@@ -342,10 +344,10 @@ export default class imageAutoUploadPlugin extends Plugin {
         mtime: Date.now(),
       });
 
-      return { ok: true, msg: "ok", path: savePath };
+      return { ok: true, msg: 'ok', path: savePath };
     } catch (err: any) {
-      console.error(t("Download failed: ${err}"));
-      return { ok: false, msg: err?.message || t("Download exception") };
+      error(t('Download failed')+':'+err);
+      return { ok: false, msg: err?.message || t('Download exception') };
     }
   }
 
@@ -353,7 +355,7 @@ export default class imageAutoUploadPlugin extends Plugin {
     const imageList: Image[] = [];
 
     for (const match of fileArray) {
-      if (match.path.startsWith("http")) {
+      if (match.path.startsWith('http')) {
         if (this.settings.workOnNetWork) {
           if (
             !this.helper.hasBlackDomain(
@@ -383,7 +385,7 @@ export default class imageAutoUploadPlugin extends Plugin {
   }
   getFile(fileName: string, fileMap: any) {
     if (!fileMap) {
-      fileMap = arrayToObject(this.app.vault.getFiles(), "name");
+      fileMap = arrayToObject(this.app.vault.getFiles(), 'name');
     }
     return fileMap[fileName];
   }
@@ -393,16 +395,16 @@ export default class imageAutoUploadPlugin extends Plugin {
     const activeFIle = this.app.workspace.getActiveFile();
 
     if (!activeFIle) {
-      new Notice(t("Please open a file first"));
+      new Notice(t('Please open a file first'));
       return;
     }
 
     const env = getPlatformEnv(this.app);
     const basePath =
-      env === "desktop" ? (this.app.vault.adapter as FileSystemAdapter).getBasePath() : "";
+      env === 'desktop' ? (this.app.vault.adapter as FileSystemAdapter).getBasePath() : '';
 
-    const fileMap = arrayToObject(this.app.vault.getFiles(), "name");
-    const filePathMap = arrayToObject(this.app.vault.getFiles(), "path");
+    const fileMap = arrayToObject(this.app.vault.getFiles(), 'name');
+    const filePathMap = arrayToObject(this.app.vault.getFiles(), 'path');
     const fileArray = this.filterFile(this.helper.getAllFiles());
 
     const imageList: Image[] = [];
@@ -410,7 +412,7 @@ export default class imageAutoUploadPlugin extends Plugin {
     for (const match of fileArray) {
       const encodedUri = match.path;
 
-      if (!encodedUri.startsWith("http")) continue;
+      if (!encodedUri.startsWith('http')) continue;
 
       const matchPath = decodeURI(encodedUri);
       const fileName = matchPath.split(/[\\/]/).pop() || "";
@@ -421,21 +423,21 @@ export default class imageAutoUploadPlugin extends Plugin {
       }
 
       // 相对路径
-      if (!file && (matchPath.startsWith("./") || matchPath.startsWith("../"))) {
+      if (!file && (matchPath.startsWith('./') || matchPath.startsWith('../'))) {
         const parentDir = activeFIle.parent?.path || "";
         let absoPath = "";
 
-        if (matchPath.startsWith("./")) {
+        if (matchPath.startsWith('./')) {
             absoPath = parentDir + matchPath.substring(1)
         } else {
-          const levelUpCount = matchPath.split("../").length-1;
-          const ParentParts = parentDir.split("/");
-          const relativeParts = matchPath.split("/");
+          const levelUpCount = matchPath.split('../').length-1;
+          const ParentParts = parentDir.split('/'); 
+          const relativeParts = matchPath.split('/');
           const combined = [
             ...ParentParts.slice(0, -levelUpCount),
             ...relativeParts.slice(levelUpCount),
           ];
-          absoPath = combined.join("/");
+          absoPath = combined.join('/');
         }
 
         file = this.app.vault.getAbstractFileByPath(absoPath) as TFile;
@@ -446,7 +448,7 @@ export default class imageAutoUploadPlugin extends Plugin {
       }
 
       if (file && isAssetTypeAnImage(file.path)) {
-        const absPath = env === "desktop" ? `${basePath}/${file.path}` : file.path;
+        const absPath = env === 'desktop' ? `${basePath}/${file.path}` : file.path;
 
         if (!imageList.find(item => item.path === absPath)) {
           imageList.push({
@@ -460,11 +462,11 @@ export default class imageAutoUploadPlugin extends Plugin {
     }
 
     if (imageList.length === 0) {
-      new Notice(t("No image files parsed"));
+      new Notice(t('No image files parsed'));
       return;
     }
 
-    new Notice(t(`Found ${imageList.length} image files, starting upload`));
+    new Notice(t('uploadStart', { count: imageList.length }));
 
     try {
       const concurrency = parseInt(this.settings.concurrencyMode);
@@ -475,7 +477,7 @@ export default class imageAutoUploadPlugin extends Plugin {
 
       if (!res.success) {
         new Notice(t('Some image uploads failed'));
-        console.warn(t('[Lskypro-Upload-V2] Some image uploads failed') + ':', res.msg);
+        warn(t('Some image uploads failed') + ':', res.msg);
       }
 
       const urls = [...(res.result || [])];
@@ -488,7 +490,7 @@ export default class imageAutoUploadPlugin extends Plugin {
       imageList.forEach((item) => {
         const newUrl = urls.shift();
         if(newUrl) {
-          content = content.replaceAll(item.source, `![](${newUrl})`)
+          content = content.replaceAll(item.source, '![](${newUrl})');
         }
       });
 
@@ -501,11 +503,11 @@ export default class imageAutoUploadPlugin extends Plugin {
         }
       }
 
-    new Notice(t('Image upload completed'));
+    new Notice(t('uploadComplete'));
     } catch (error) {
-      new Notice(t('Image upload failed'));
-      console.error(t('[Lskypro-Upload-V2] Image upload failed') + ':', error);
-      new Notice(t('An error occurred during upload, please check the console log'));
+      new Notice(t('uploadFailed'));
+      error(t('uploadFailed') + ':', error);
+      new Notice(t('uploadFailedNotice'));
     }
   }
 
@@ -560,7 +562,7 @@ export default class imageAutoUploadPlugin extends Plugin {
                     ];
                     this.saveSettings();
                   } else {
-                    new Notice(t('Upload error'));
+                    new Notice(t('uploadError'));
                   }
                 });
             }
@@ -624,7 +626,7 @@ export default class imageAutoUploadPlugin extends Plugin {
                 this.embedMarkDownImage(editor, pasteId, value, files[0].name);
               });
             } else {
-              new Notice(t('Upload error'));
+              new Notice(t('uploadError'));
             }
           }
         }
@@ -672,7 +674,7 @@ export default class imageAutoUploadPlugin extends Plugin {
   }
 
   private static progressTextFor(id: string) {
-    return t('![Uploading file...') + id + ']()';
+    return t('uploading') + id;
   }
 
   embedMarkDownImage(
@@ -694,12 +696,12 @@ export default class imageAutoUploadPlugin extends Plugin {
 
   handleFailedUpload(editor: Editor, pasteId: string, reason: any) {
     new Notice(t(reason));
-    console.error(t('Failed request: ') + reason);
+    error(t('Failed request') + ': ' + reason);
     let progressText = imageAutoUploadPlugin.progressTextFor(pasteId);
     imageAutoUploadPlugin.replaceFirstOccurrence(
       editor,
       progressText,
-      t('upload failed, check dev console')
+      t('uploadFailedNotice')
     );
   }
 

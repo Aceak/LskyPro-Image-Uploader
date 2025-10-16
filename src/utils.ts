@@ -172,7 +172,7 @@ export function resolveImageFile(app: App, rawLink: string): TFile | null {
   try {
     if (/%[0-9A-Fa-f]{2}/.test(path)) path = decodeURIComponent(path);
   } catch (e) {
-    console.warn('[resolveImageFile] decodeURIComponent failed:', e);
+    warn('[resolveImageFile] decodeURIComponent failed:', e);
   }
 
   // 获取当前活动文件的路径作为基准路径
@@ -185,19 +185,48 @@ export function resolveImageFile(app: App, rawLink: string): TFile | null {
 }
 
 /**
+ * 获取统一的日志前缀（带时间戳）
+ */
+function logPrefix(level: string): string {
+  const now = new Date().toISOString().split("T")[1].replace("Z", "");
+  return `[LSKY-${level.toUpperCase()} ${now}]`;
+}
+
+/**
  * 调试输出函数
  * 仅当 window.__LSKY_DEBUG__ === true 时才输出日志
- * @param args 任意数量的日志参数
  */
 export function dbg(...args: any[]) {
   try {
     if (typeof window !== "undefined" && (window as any).__LSKY_DEBUG__ === true) {
-      const now = new Date().toISOString().split("T")[1].replace("Z", "");
-      const prefix = `[LSKY-DEBUG ${now}]`;
-      console.log(prefix, ...args);
+      console.log(logPrefix("debug"), ...args);
     }
   } catch {
-    // 环境不支持 window 或日志输出异常时静默忽略
+    // 忽略环境不支持 window 或 console 的情况
+  }
+}
+
+/**
+ * 警告输出函数
+ * 永远输出，用于潜在问题提示
+ */
+export function warn(...args: any[]) {
+  try {
+    console.warn(logPrefix("warn"), ...args);
+  } catch {
+    // 忽略异常
+  }
+}
+
+/**
+ * 错误输出函数
+ * 永远输出，用于严重错误
+ */
+export function error(...args: any[]) {
+  try {
+    console.error(logPrefix("error"), ...args);
+  } catch {
+    // 忽略异常
   }
 }
 

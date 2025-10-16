@@ -4,7 +4,7 @@
  */
 import { App, PluginSettingTab, Setting, Notice } from "obsidian";
 import imageAutoUploadPlugin from "./main";
-import { t } from "./lang/helpers";
+import { t } from "./lang/i18n";
 
 /**
  * 插件设置接口
@@ -13,6 +13,7 @@ import { t } from "./lang/helpers";
 export interface PluginSettings {
   _debug: boolean;                // 调试模式，用于开发和测试
   uploadByClipSwitch: boolean;    // 启用/禁用剪贴板自动上传
+  uploadAttachmentsSwitch: boolean; // 启用/禁用附件自动上传
   uploadServer: string;           // LskyPro服务器地址
   token: string;                  // 认证令牌
   storage_id: string;             // 存储ID（V2版本）
@@ -35,6 +36,7 @@ export interface PluginSettings {
 export const DEFAULT_SETTINGS: PluginSettings = {
   _debug: false,                  // 默认禁用调试模式
   uploadByClipSwitch: true,       // 默认启用剪贴板自动上传
+  uploadAttachmentsSwitch: true,  // 默认启用附件自动上传
   uploader: "LskyPro-V2",         // 默认使用V2版本上传器
   token: "",                     // 默认空令牌
   storage_id:"",                 // 默认空存储ID
@@ -73,14 +75,12 @@ export class SettingTab extends PluginSettingTab {
   display(): void {
     let { containerEl } = this;
     containerEl.empty();
-    containerEl.createEl("h2", { text: t("Plugin Settings") });
+    containerEl.createEl('h2', { text: t('Plugin Settings') });
     
     // 剪贴板自动上传设置
     new Setting(containerEl)
-      .setName(t("Auto upload from clipboard"))
-      .setDesc(
-        t("Auto upload clipboard description")
-      )
+      .setName(t('Auto upload from clipboard'))
+      .setDesc(t('Auto upload clipboard description'))
       .addToggle(toggle =>
         toggle
           .setValue(this.plugin.settings.uploadByClipSwitch)
@@ -91,12 +91,24 @@ export class SettingTab extends PluginSettingTab {
       );
 
     new Setting(containerEl)
-      .setName(t("Default uploader"))
-      .setDesc(t("Default uploader description"))
+      .setName(t('Auto upload attachments'))
+      .setDesc(t('Auto upload attachments description'))
+      .addToggle(toggle =>
+        toggle
+          .setValue(this.plugin.settings.applyImage)
+          .onChange(async value => {
+            this.plugin.settings.applyImage = value;
+            await this.plugin.saveSettings();
+          })
+      );
+    
+    new Setting(containerEl)
+      .setName(t('Default uploader'))
+      .setDesc(t('Default uploader description'))
       .addDropdown(cb =>
           cb
-            .addOption("LskyPro-V2", "LskyPro v2")
-            .addOption("LskyPro-V1", "LskyPro v1")
+            .addOption('LskyPro-V2', 'LskyPro v2')
+            .addOption('LskyPro-V1', 'LskyPro v1')
             .setValue(this.plugin.settings.uploader)
             .onChange(async value => {
               this.plugin.settings.uploader = value;
@@ -109,11 +121,11 @@ export class SettingTab extends PluginSettingTab {
 
     // 无论选择哪个版本，都显示基本设置
       new Setting(containerEl)
-      .setName(t("LskyPro server domain"))
-      .setDesc(t("LskyPro server domain description"))
+      .setName(t('LskyPro server domain'))
+      .setDesc(t('LskyPro server domain description'))
       .addText(text =>
         text
-          .setPlaceholder(t("Please input LskyPro server domain"))
+          .setPlaceholder(t('Please input LskyPro server domain'))
           .setValue(this.plugin.settings.uploadServer)
           .onChange(async key => {
             this.plugin.settings.uploadServer = key;
@@ -123,11 +135,11 @@ export class SettingTab extends PluginSettingTab {
           })
       );
       new Setting(containerEl)
-      .setName(t("LskyPro Token"))
-      .setDesc(t("LskyPro Token description"))
+      .setName(t('LskyPro Token'))
+      .setDesc(t('LskyPro Token description'))
       .addText(text =>
         text
-          .setPlaceholder(t("Please input LskyPro Token"))
+          .setPlaceholder(t('Please input LskyPro Token'))
           .setValue(this.plugin.settings.token)
           .onChange(async key => {
             this.plugin.settings.token = key;
@@ -138,13 +150,13 @@ export class SettingTab extends PluginSettingTab {
       );
       
     // 根据版本显示对应的存储ID设置
-    if (this.plugin.settings.uploader === "LskyPro-V2") {
+    if (this.plugin.settings.uploader === 'LskyPro-V2') {
       new Setting(containerEl)
-      .setName(t("LskyPro Storage ID"))
-      .setDesc(t("LskyPro v2 Storage ID description"))
+      .setName(t('LskyPro Storage ID'))
+      .setDesc(t('LskyPro v2 Storage ID description'))
       .addText(text =>
         text
-          .setPlaceholder(t("Please input LskyPro Storage ID"))
+          .setPlaceholder(t('Please input LskyPro Storage ID'))
           .setValue(this.plugin.settings.storage_id)
           .onChange(async key => {
             this.plugin.settings.storage_id = key;
@@ -153,13 +165,13 @@ export class SettingTab extends PluginSettingTab {
             this.plugin.reinitUploader();
           })
       );
-    } else if (this.plugin.settings.uploader === "LskyPro-V1") {
+    } else if (this.plugin.settings.uploader === 'LskyPro-V1') {
       new Setting(containerEl)
-      .setName(t("LskyPro Strategy ID（optional）"))
-      .setDesc(t("LskyPro v1 Strategy ID description"))
+      .setName(t('LskyPro Strategy ID（optional）'))
+      .setDesc(t('LskyPro v1 Strategy ID description'))
       .addText(text =>
         text
-          .setPlaceholder(t("Please input LskyPro Strategy ID"))
+          .setPlaceholder(t('Please input LskyPro Strategy ID'))
           .setValue(this.plugin.settings.strategy_id)
           .onChange(async key => {
             this.plugin.settings.strategy_id = key;
@@ -172,11 +184,11 @@ export class SettingTab extends PluginSettingTab {
 
 
     new Setting(containerEl)
-      .setName(t("Image size suffix"))
-      .setDesc(t("Image size suffix Description"))
+      .setName(t('Image size suffix'))
+      .setDesc(t('Image size suffix Description'))
       .addText(text =>
         text
-          .setPlaceholder(t("Please input image size suffix"))
+          .setPlaceholder(t('Please input image size suffix'))
           .setValue(this.plugin.settings.imageSizeSuffix)
           .onChange(async key => {
             this.plugin.settings.imageSizeSuffix = key;
@@ -185,8 +197,8 @@ export class SettingTab extends PluginSettingTab {
       );
 
     new Setting(containerEl)
-      .setName(t("Work on network"))
-      .setDesc(t("Work on network Description"))
+      .setName(t('Work on network'))
+      .setDesc(t('Work on network Description'))
       .addToggle(toggle =>
         toggle
           .setValue(this.plugin.settings.workOnNetWork)
@@ -198,8 +210,8 @@ export class SettingTab extends PluginSettingTab {
       );
 
     new Setting(containerEl)
-      .setName(t("Network Domain Black List"))
-      .setDesc(t("Network Domain Black List Description"))
+      .setName(t('Network Domain Black List'))
+      .setDesc(t('Network Domain Black List Description'))
       .addTextArea(textArea =>
         textArea
           .setValue(this.plugin.settings.newWorkBlackDomains)
@@ -210,8 +222,8 @@ export class SettingTab extends PluginSettingTab {
       );
 
     new Setting(containerEl)
-      .setName(t("Upload when clipboard has image and text together"))
-      .setDesc(t("Advanced clipboard upload description"))
+      .setName(t('Upload when clipboard has image and text together'))
+      .setDesc(t('Advanced clipboard upload description'))
       .addToggle(toggle =>
         toggle
           .setValue(this.plugin.settings.applyImage)
@@ -223,8 +235,8 @@ export class SettingTab extends PluginSettingTab {
       );
 
     new Setting(containerEl)
-      .setName(t("Delete source file after you upload file"))
-      .setDesc(t("Delete source file Description"))
+      .setName(t('Delete source file after you upload file'))
+      .setDesc(t('Delete source file Description'))
       .addToggle(toggle =>
         toggle
           .setValue(this.plugin.settings.deleteSource)
@@ -236,18 +248,18 @@ export class SettingTab extends PluginSettingTab {
       );
 
       new Setting(containerEl)
-      .setName(t("Upload concurrency"))
-      .setDesc(t("Upload concurrency description"))
+      .setName(t('Upload concurrency'))
+      .setDesc(t('Upload concurrency description'))
       .addDropdown((cb) =>
         cb
-          .addOption("1", t("Single)"))
-          .addOption("3", t("Medium"))
-          .addOption("5", t("High"))
+          .addOption('1', t('Single'))
+          .addOption('3', t('Medium'))
+          .addOption('5', t('High'))
           .setValue(this.plugin.settings.concurrencyMode || "3")
           .onChange(async (value) => {
             this.plugin.settings.concurrencyMode = value;
             await this.plugin.saveSettings();
-            new Notice(t(`Concurrency mode switched to ${value}`));
+            new Notice(t('concurrencyModeSwitchedTo', { mode: value }));
           })
       );
 

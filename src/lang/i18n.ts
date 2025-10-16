@@ -24,7 +24,10 @@ import tr from './locale/tr';
 import zhCN from './locale/zh-cn';
 import zhTW from './locale/zh-tw';
 
-const localeMap: { [k: string]: Partial<typeof en> } = {
+// ================================
+// 1️⃣ 语言映射表
+// ================================
+const localeMap: Record<string, Partial<typeof en>> = {
   ar,
   cs: cz,
   da,
@@ -50,8 +53,33 @@ const localeMap: { [k: string]: Partial<typeof en> } = {
   'zh-tw': zhTW,
 };
 
-const locale = localeMap[moment.locale()];
 
-export function t(str: keyof typeof en): string {
-  return (locale && locale[str]) || en[str];
+const currentLocale = moment.locale();
+const locale = localeMap[currentLocale] ?? en;
+
+export type TranslationKey = keyof typeof en;
+
+export function t<K extends TranslationKey>(
+  key: K,
+  vars?: Record<string, string | number>
+): string {
+  const template = (locale && locale[key]) || en[key];
+
+  if (!vars) return template;
+
+  return template.replace(/\{\{(.*?)\}\}/g, (_, rawKey) => {
+    const cleanKey = rawKey.trim();
+    const value = vars[cleanKey];
+    return value !== undefined ? String(value) : '';
+  });
+}
+
+export function tn(
+  singular: TranslationKey,
+  plural: TranslationKey,
+  count: number,
+  vars?: Record<string, string | number>
+): string {
+  const key = count === 1 ? singular : plural;
+  return t(key, { ...vars, count });
 }

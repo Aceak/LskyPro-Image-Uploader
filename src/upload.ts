@@ -4,7 +4,7 @@
  */
 import { App, TFile, normalizePath, Notice } from "obsidian";
 import { PluginSettings } from "./setting";
-import { t } from "./lang/helpers";
+import { t } from "./lang/i18n";
 
 
 /**
@@ -160,7 +160,7 @@ private async uploadRawFile(file: File): Promise<UploadResult> {
 
     // 检查HTTP响应状态
     if (!res.ok) {
-      return { success: false, msg: t(`HTTP Error: ${res.status}`) };
+      return { success: false, msg: t('HTTP Error') + ': ' + res.status };
     }
     
     // 尝试解析JSON响应
@@ -168,7 +168,7 @@ private async uploadRawFile(file: File): Promise<UploadResult> {
     try {
       json = await res.json();
     } catch {
-      return { success: false, msg: t("Response parse failed (non-JSON)") };
+      return { success: false, msg: t('Response parse failed (non-JSON)') };
     }
 
     // 解析上传结果
@@ -183,7 +183,7 @@ private async uploadRawFile(file: File): Promise<UploadResult> {
     }
   } catch (error: any) {
     // 不打印错误日志，让上层统一处理
-    return { success: false, msg: error?.message || t("Upload request exception") };
+    return { success: false, msg: error?.message || t('Upload request exception') };
   }
 }
 
@@ -197,16 +197,16 @@ private async uploadRawFile(file: File): Promise<UploadResult> {
   private async createFileObjectFromPath(filePath: string): Promise<File> {
     // 标准化文件路径并获取文件对象
     const abstractFile = this.app.vault.getAbstractFileByPath(normalizePath(filePath));
-    if (!(abstractFile instanceof TFile)) throw new Error(t("Invalid file path"));
+    if (!(abstractFile instanceof TFile)) throw new Error(t('Invalid file path'));
 
     // 读取文件二进制内容
     const data = await this.app.vault.readBinary(abstractFile);
     
     // 获取文件扩展名，默认为 png
-    const fileExt = abstractFile.extension || "png";
+    const fileExt = abstractFile.extension || 'png';
     
     // 创建 Blob 和 File 对象
-    const file = new File([new Blob([data], { type: `image/${fileExt}` })], abstractFile.name);
+    const file = new File([new Blob([data], { type: 'image/${fileExt}' })], abstractFile.name);
     return file;
   }
 
@@ -218,7 +218,7 @@ private async uploadRawFile(file: File): Promise<UploadResult> {
   async uploadSingleFile(fileOrPath: File | string): Promise<UploadResult> {
     try {
       // 判断输入类型，如果是字符串则转换为File对象
-      const file = typeof fileOrPath === "string"
+      const file = typeof fileOrPath === 'string'
         ? await this.createFileObjectFromPath(fileOrPath)
         : fileOrPath;
 
@@ -226,7 +226,7 @@ private async uploadRawFile(file: File): Promise<UploadResult> {
       return await this.uploadRawFile(file);
     } catch (err: any) {
       // 处理上传错误
-      return { success: false, msg: err?.message || t("Upload error") };
+      return { success: false, msg: err?.message || t('uploadError') };
     }
   }
 
@@ -249,14 +249,14 @@ private async uploadRawFile(file: File): Promise<UploadResult> {
 
       // 检查是否有上传失败的文件
       const failed = results.find((res) => !res.success);
-      if (failed) throw new Error(failed.msg || t("Some files failed to upload"));
+      if (failed) throw new Error(failed.msg || t('Some files failed to upload'));
 
       // 收集所有成功上传的URL
-      const urls = results.map((res) => res.url || "").filter(Boolean);
+      const urls = results.map((res) => res.url || '').filter(Boolean);
       return { success: true, result: urls };
     } catch (err: any) {
       // 处理批量上传错误
-      return { success: false, msg: err?.message || t("Batch upload failed") };
+      return { success: false, msg: err?.message || t('Batch upload failed') };
     }
   }
 
@@ -276,11 +276,11 @@ private async uploadRawFile(file: File): Promise<UploadResult> {
         results.push(result);
         current++;
         if (result.success) successCount++;
-        new Notice(t(`Upload progress: ${current}/${total}`));
+        new Notice(t('Upload progress') +':' + current + '/' + total);
       } catch (err: any) {
         results.push({ success: false, msg: err?.message || t("Upload exception") });
         current++;
-        new Notice(t(`Upload error: ${current}/${total}`));
+        new Notice(t('uploadError') +':' + current + '/' + total);
       }
     };
 
@@ -308,7 +308,11 @@ private async uploadRawFile(file: File): Promise<UploadResult> {
     if (failed.length > 0) {
       return {
         success: false,
-        msg: t(`Upload completed (success ${successCount}/${total}, failed ${failed.length})`),
+        msg: t('upload.completed_summary', {
+          successCount,
+          total,
+          failedCount: failed.length,
+        }),
         result: results.filter(r => r.success).map(r => r.url!),
       };
     }
@@ -316,7 +320,7 @@ private async uploadRawFile(file: File): Promise<UploadResult> {
     return {
       success: true,
       result: results.map(r => r.url!),
-      msg: t(`All uploads completed successfully (${total} images)`),
+      msg: t('upload.all_completed', { total }),
     };
   }
 

@@ -39,6 +39,13 @@ interface ParsedResult {
   url: string | null;   // 图片URL
 }
 
+type ConcurrencyMode = 'low' | 'medium' | 'high';
+const ConcurrencyMap: Record<ConcurrencyMode, number> = {
+  low: 1,
+  medium: 3,
+  high: 5,
+};
+
 /**
  * 解析LskyPro API响应
  * @param response API响应对象
@@ -46,7 +53,7 @@ interface ParsedResult {
  */
 function parseUploadResult(response: LskyApiResponse): ParsedResult {
   if (!response) {
-    return { success: false, message: t("Response is empty"), url: null };
+    return { success: false, message: t("response.empty"), url: null };
   }
 
   const { status, message, data } = response;
@@ -62,7 +69,7 @@ function parseUploadResult(response: LskyApiResponse): ParsedResult {
 
   return {
     success,
-    message: message || (success ? t("Upload success") : t("Upload failed")),
+    message: message || (success ? t("response.success") : t("response.failed")),
     url,
   };
 }
@@ -160,7 +167,7 @@ private async uploadRawFile(file: File): Promise<UploadResult> {
 
     // 检查HTTP响应状态
     if (!res.ok) {
-      return { success: false, msg: t('HTTP Error') + ': ' + res.status };
+      return { success: false, msg: t('upload.httpError') + ': ' + res.status };
     }
     
     // 尝试解析JSON响应
@@ -168,7 +175,7 @@ private async uploadRawFile(file: File): Promise<UploadResult> {
     try {
       json = await res.json();
     } catch {
-      return { success: false, msg: t('Response parse failed (non-JSON)') };
+      return { success: false, msg: t('response.parseFailed') };
     }
 
     // 解析上传结果
@@ -183,7 +190,7 @@ private async uploadRawFile(file: File): Promise<UploadResult> {
     }
   } catch (error: any) {
     // 不打印错误日志，让上层统一处理
-    return { success: false, msg: error?.message || t('Upload request exception') };
+    return { success: false, msg: error?.message || t('upload.requestException') };
   }
 }
 
@@ -197,7 +204,7 @@ private async uploadRawFile(file: File): Promise<UploadResult> {
   private async createFileObjectFromPath(filePath: string): Promise<File> {
     // 标准化文件路径并获取文件对象
     const abstractFile = this.app.vault.getAbstractFileByPath(normalizePath(filePath));
-    if (!(abstractFile instanceof TFile)) throw new Error(t('Invalid file path'));
+    if (!(abstractFile instanceof TFile)) throw new Error(t('upload.invalidPath'));
 
     // 读取文件二进制内容
     const data = await this.app.vault.readBinary(abstractFile);
@@ -226,7 +233,7 @@ private async uploadRawFile(file: File): Promise<UploadResult> {
       return await this.uploadRawFile(file);
     } catch (err: any) {
       // 处理上传错误
-      return { success: false, msg: err?.message || t('uploadError') };
+      return { success: false, msg: err?.message || t('upload.error') };
     }
   }
 
@@ -249,21 +256,26 @@ private async uploadRawFile(file: File): Promise<UploadResult> {
 
       // 检查是否有上传失败的文件
       const failed = results.find((res) => !res.success);
-      if (failed) throw new Error(failed.msg || t('Some files failed to upload'));
+      if (failed) throw new Error(failed.msg || t('response.someFailed'));
 
       // 收集所有成功上传的URL
       const urls = results.map((res) => res.url || '').filter(Boolean);
       return { success: true, result: urls };
     } catch (err: any) {
       // 处理批量上传错误
-      return { success: false, msg: err?.message || t('Batch upload failed') };
+      return { success: false, msg: err?.message || t('upload.batchFailed') };
     }
   }
 
   /**
    * 限流并行上传（支持配置并发数量）
+   * @param inputs 文件路径或 File 对象数组
+   * @param concurrency 并发数量（纯数字）
    */
-  async uploadWithLimit(inputs: Array<File | string>, concurrency: number = 3): Promise<UploadResult> {
+  async uploadWithLimit(
+    inputs: Array<File | string>,
+    concurrency: number = 3
+  ): Promise<UploadResult> {
     const results: UploadResult[] = [];
     const total = inputs.length;
     let current = 0;
@@ -276,11 +288,11 @@ private async uploadRawFile(file: File): Promise<UploadResult> {
         results.push(result);
         current++;
         if (result.success) successCount++;
-        new Notice(t('Upload progress') +':' + current + '/' + total);
+        new Notice(`${t('upload.progress')}: ${current}/${total}`);
       } catch (err: any) {
-        results.push({ success: false, msg: err?.message || t("Upload exception") });
+        results.push({ success: false, msg: err?.message || t("upload.exception") });
         current++;
-        new Notice(t('uploadError') +':' + current + '/' + total);
+        new Notice(`${t('upload.exception')}: ${current}/${total}`);
       }
     };
 
@@ -293,22 +305,21 @@ private async uploadRawFile(file: File): Promise<UploadResult> {
       // 并发控制
       if (running.length >= concurrency) {
         await Promise.race(running);
-        // 移除已完成任务
+        // 清理已完成任务
         for (let i = running.length - 1; i >= 0; i--) {
           if (running[i].catch) running.splice(i, 1);
         }
       }
     }
 
-    // 等待剩余任务
     await Promise.all(running);
 
-    // 统一处理结果
+    // 汇总结果
     const failed = results.filter((r) => !r.success);
     if (failed.length > 0) {
       return {
         success: false,
-        msg: t('upload.completed_summary', {
+        msg: t('upload.summary.completed', {
           successCount,
           total,
           failedCount: failed.length,
@@ -320,15 +331,10 @@ private async uploadRawFile(file: File): Promise<UploadResult> {
     return {
       success: true,
       result: results.map(r => r.url!),
-      msg: t('upload.all_completed', { total }),
+      msg: t('upload.summary.allCompleted', { total }),
     };
   }
 
-  /**
-   * 上传剪贴板中的图片
-   * @param evt 剪贴板事件对象
-   * @returns 上传结果
-   */
   /**
    * 上传剪贴板中的图片
    * @param evt 剪贴板事件对象，包含要上传的图片数据
@@ -337,11 +343,11 @@ private async uploadRawFile(file: File): Promise<UploadResult> {
   async uploadFromClipboard(evt: ClipboardEvent): Promise<UploadResult> {
     try {
       const file = evt.clipboardData?.files?.[0];
-      if (!file) throw new Error(t("Clipboard does not contain any image file"));
+      if (!file) throw new Error(t("upload.clipboardEmpty"));
 
       return await this.uploadSingleFile(file);
     } catch (err: any) {
-      return { success: false, msg: err?.message || t("Failed to upload image from clipboard") };
+      return { success: false, msg: err?.message || t("upload.clipboardFailed") };
     }
   }
 }

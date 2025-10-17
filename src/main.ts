@@ -18,7 +18,8 @@ import {
   arrayToObject,
   resolveImageFile,
   getPlatformEnv,
-  IMAGE_EXT_LIST,
+  isValidImageExtension,
+  getConcurrencyValue,
   dbg,
   warn,
   error,
@@ -67,15 +68,9 @@ export default class imageAutoUploadPlugin extends Plugin {
     await this.loadSettings();
     setLanguage(this.settings.language);
     (window as any).__LSKY_DEBUG__ = this.settings._debug === true;
+
     this.helper = new Helper(this.app);
-    
-    // 根据设置选择上传器版本
-    const version = this.settings.uploader === 'LskyPro-V1' ? 'v1' : 'v2';
-    this.uploader = new LskyProUploader(this.settings, this.app, version);
-    
-    if (!['LskyPro-V2', 'LskyPro-V1'].includes(this.settings.uploader)) {
-      new Notice(t('Unknown uploader version'));
-    }
+    this.reinitUploader();
 
     addIcon(
       'upload',
@@ -85,114 +80,237 @@ export default class imageAutoUploadPlugin extends Plugin {
     );
 
     this.addSettingTab(new SettingTab(this.app, this));
-
-    this.addCommand({
-      id: "Upload all images",
-      name: t("Upload all images"),
-      checkCallback: (checking: boolean) => {
-        let leaf = this.app.workspace.getActiveViewOfType(MarkdownView);
-        if (leaf) {
-          if (!checking) {
-            this.uploadAllFile();
-          }
-          return true;
-        }
-        return false;
-      },
-    });
     
-    this.addCommand({
-      id: "Download all images",
-      name: t("Download all images"),
-      checkCallback: (checking: boolean) => {
-        let leaf = this.app.workspace.getActiveViewOfType(MarkdownView);
-        if (leaf) {
-          if (!checking) {
-            this.downloadAllImageFiles();
-          }
-          return true;
-        }
-        return false;
-      },
-    });
-
-    this.setupPasteHandler();
-    this.registerSelection();
+    this.registerCommands();
+    this.registerMenus();
+    this.registerPasteHandler();
+    this.registerMobileAutoUpload();
   }
 
-  registerSelection() {
+  // 注册全局命令
+  registerCommands() {
+    // 全局命令：上传所有图片
+    this.addCommand({
+      id: "upload-all-images",
+      name: t("main.uploadAllImages"),
+      checkCallback: (checking: boolean) => {
+        let leaf = this.app.workspace.getActiveViewOfType(MarkdownView);
+        if (!leaf) return false;
+        if (!checking) this.uploadAllFile();
+        return true;
+      },
+    });
+
+    // 全局命令：下载所有图片
+    this.addCommand({
+
+      id: "download-all-images",
+      name: t("main.downloadAllImages"),
+      checkCallback: (checking: boolean) => {
+        let leaf = this.app.workspace.getActiveViewOfType(MarkdownView);
+        if (!leaf) return false;
+        if (!checking) this.downloadAllImageFiles();
+        return true;
+      },
+    });
+  }
+
+  // 注册上下文菜单
+  registerMenus() {
     this.registerEvent(
       this.app.workspace.on(
-        'editor-menu',
+        "editor-menu",
         (menu: Menu, editor: Editor, info: MarkdownView | MarkdownFileInfo) => {
-          if (this.app.workspace.getLeavesOfType('markdown').length === 0) {
+          const selection = editor.getSelection();
+          if (!selection) return;
+
+          const markdownMatch = /!\[.*\]\((.*)\)/.exec(selection);
+          if (markdownMatch && markdownMatch[1] && !markdownMatch[1].startsWith("http")) {
+            this.addUploadMenu(menu, markdownMatch[1], editor);
             return;
           }
-          const selection = editor.getSelection();
-          if (selection) {
-            // 1. 检查是否为Markdown链接格式 ![]()
-            const markdownRegex = /!\[.*\]\((.*)\)/g;
-            const markdownMatch = markdownRegex.exec(selection);
-            
-            if (markdownMatch && markdownMatch.length > 1) {
-              const markdownUrl = markdownMatch[1];
-              // 检查是否为本地路径（不以http开头）
-              if (!markdownUrl.startsWith('http')) {
-                // 添加上传到图床的菜单项
-                this.addMenu(menu, markdownUrl, editor);
-              }
-            } 
-            // 2. 检查是否为Wiki链接格式 ![[...]] 或 [[...]]
-            else {
-              const wikiLinkRegex = /^!?\[\[(.*?)\]\]$/;
-              const wikiLinkMatch = wikiLinkRegex.exec(selection);
-              
-              if (wikiLinkMatch && wikiLinkMatch.length > 1) {
-                const wikiLinkPath = wikiLinkMatch[1];
-                // 检查是否为本地路径（不以http开头）
-                if (!wikiLinkPath.startsWith('http')) {
-                  // 添加上传到图床的菜单项
-                  this.addMenu(menu, wikiLinkPath, editor);
-                }
-              }
-            }
+
+          const wikiMatch = /^!?\[\[(.*?)\]\]$/.exec(selection);
+          if (wikiMatch && wikiMatch[1] && !wikiMatch[1].startsWith("http")) {
+            this.addUploadMenu(menu, wikiMatch[1], editor);
           }
         }
       )
     );
   }
 
-  // 添加右键菜单项
-  addMenu(menu: Menu, imageUrl: string, editor: Editor) {
+  // 注册粘贴与拖拽上传事件
+  registerPasteHandler() {
+    /* === 粘贴事件 === */
+    this.registerEvent(
+      this.app.workspace.on(
+        "editor-paste",
+        async (evt: ClipboardEvent, editor: Editor) => {
+          const allowUpload = this.helper.getFrontmatterValue(
+            "image-auto-upload",
+            this.settings.uploadByClipSwitch
+          );
+          if (!allowUpload) {
+            dbg(t("main.autoUploadClipboardDisabled"));
+            return;
+          }
+
+          const clipboardData = evt.clipboardData;
+          if (!clipboardData) return;
+
+          // ① 检查粘贴内容是否为网络图片 Markdown
+          if (this.settings.workOnNetWork) {
+            const text = clipboardData.getData("text/plain");
+            const imageList = this.helper
+              .getImageLink(text)
+              .filter((img) => img.path.startsWith("http"))
+              .filter(
+                (img) =>
+                  !this.helper.hasBlackDomain(
+                    img.path,
+                    this.settings.newWorkBlackDomains
+                  )
+              );
+
+            if (imageList.length) {
+              dbg(t("main.pasteNetworkImages", { count: imageList.length }));
+              this.handleNetworkPasteImages(editor, imageList);
+              return;
+            }
+          }
+
+          // ② 检查是否为本地剪贴板图片（如截图）
+          if (this.canUpload(clipboardData)) {
+            evt.preventDefault();
+            const pasteId = Math.random().toString(36).substring(2, 8);
+            this.insertTemporaryText(editor, pasteId);
+
+            try {
+              const res = await this.uploader.uploadFromClipboard(evt);
+              if (!res.success) {
+                this.handleFailedUpload(editor, pasteId, res.msg);
+                return;
+              }
+
+              const url = res.url || "";
+              this.embedMarkDownImage(editor, pasteId, url);
+              this.appendUploadedUrls(res.result);
+            } catch (err) {
+              this.handleFailedUpload(editor, pasteId, err?.message);
+            }
+          }
+        }
+      )
+    );
+
+    /* === 拖拽事件 === */
+    this.registerEvent(
+      this.app.workspace.on(
+        "editor-drop",
+        async (evt: DragEvent, editor: Editor) => {
+          const allowUpload = this.helper.getFrontmatterValue(
+            "image-auto-upload",
+            this.settings.uploadByClipSwitch
+          );
+          if (!allowUpload) {
+            dbg(t("main.autoUploadClipboardDisabled"));
+            return;
+          }
+
+          const files = evt.dataTransfer?.files;
+          if (!files?.length || !files[0].type.startsWith("image")) return;
+
+          evt.preventDefault();
+          new Notice(t("upload.uploading"));
+
+          const res = await this.uploader.uploadFiles(Array.from(files));
+
+          if (res.success && res.result?.length) {
+            for (const url of res.result) {
+              editor.replaceSelection(`![](${url})\n`);
+            }
+            this.appendUploadedUrls(res.result);
+            new Notice(t("upload.success"));
+          } else {
+            new Notice(t("upload.failedNotice"));
+            error(t("upload.error") + ":" + res.msg);
+          }
+        }
+      )
+    );
+  }
+
+
+  // 注册移动端自动上传事件
+  registerMobileAutoUpload() {
+    this.registerEvent(
+      this.app.vault.on("create", async (file) => {
+        if (!(file instanceof TFile)) return;
+        if (!isAssetTypeAnImage(file.path)) return;
+
+        const env = getPlatformEnv(this.app);
+        if (env !== "mobile") return;
+
+        const allow = this.helper.getFrontmatterValue(
+          "image-auto-upload",
+          this.settings.uploadAttachmentsSwitch
+        );
+        if (!allow){
+          dbg(t("main.autoUploadAttachmentsDisabled"));
+          return;
+        }
+
+        try {
+          new Notice(t("upload.uploading"));
+          const res = await this.uploader.uploadSingleFile(file.path);
+          if (res.success && res.url) {
+            const editor = this.helper.getEditor();
+            if (!editor) return;
+            editor.replaceSelection(`![](${res.url})`);
+            if (this.settings.deleteSource) await this.app.fileManager.trashFile(file);
+            new Notice(t("upload.success"));
+          } else {
+            new Notice(t("upload.failedNotice"));
+          }
+        } catch (e) {
+          error(t("upload.error") + ":" + e);
+        }
+      })
+    );
+  }
+
+  // 添加上传菜单到上下文菜单
+  addUploadMenu(menu: Menu, imageUrl: string, editor: Editor) {
     menu.addItem((item) => {
       item
-        .setTitle(t('Upload Image'))
-        .setIcon('upload')
+        .setTitle(t("main.uploadImage"))
+        .setIcon("upload")
         .onClick(async () => {
           const file = resolveImageFile(this.app, imageUrl);
           if (!file) {
-            error(t('Could not find image file')+':'+imageUrl);
-            new Notice(t('Could not find image file'));
+            error(t("main.fileNotFound") + ":" + imageUrl);
+            new Notice(t("main.fileNotFound"));
             return;
           }
           const result = await this.uploader.uploadSingleFile(file.path);
-          if (result?.success && result?.url) {
-            new Notice(t('Upload success'));
+          if (result.success && result.url) {
+            new Notice(t("upload.success"));
             editor.replaceSelection(`![](${result.url})`);
           } else {
-            error(t('Upload failed')+':'+result?.msg);
-            new Notice(t('Upload failed Notice'));
+            error(t("upload.failedNotice") + ":" + result.msg);
+            new Notice(t("upload.failedNotice"));
           }
         });
     });
   }
 
+  // 下载所有图片文件
   async downloadAllImageFiles() {
     const fileArray = this.helper.getAllFiles();
     const folderPathAbs = this.getAttachmentFolderPath();
 
     if (!folderPathAbs) {
-      new Notice(t('Could not get attachment folder path'));
+      new Notice(t("main.noAttachmentFolder"));
       return;
     }
 
@@ -217,19 +335,15 @@ export default class imageAutoUploadPlugin extends Plugin {
       const match = url.match(/\.(\w+)(\?|#|$)/);
       if (!match) {
         skipped++;
-        warn(t('Skipped file with no extension')+':'+url);
+        warn(t('download.noExtension')+':'+url);
         continue;
       }
 
       // 校验扩展名合法性
       const ext = match[1].toLowerCase();
-      const allowedExts = [
-        "png", "jpg", "jpeg", "gif", "bmp",
-        "webp", "svg", "tiff", "avif"
-      ];
-      if (!allowedExts.includes(ext)) {
+      if (!isValidImageExtension(ext)) {
         skipped++;
-        warn(t('Skipped file with unsupported image type')+':'+ext);
+        warn(t('download.unsupportedType')+':'+ext);
         continue;
       }
 
@@ -251,8 +365,8 @@ export default class imageAutoUploadPlugin extends Plugin {
           });
         }
       } catch (err) {
-        new Notice(t('Download failed Notice'));
-        error(t('Download failed') + ':' + err);
+        new Notice(t('download.failedNotice'));
+        error(t('download.failed') + ':' + err);
       }
     }
 
@@ -269,7 +383,7 @@ export default class imageAutoUploadPlugin extends Plugin {
 
     const failed = count - imageArray.length - skipped;
     new Notice(
-      t('downloadReport', {
+      t('download.report', {
         count,
         success: imageArray.length,
         skipped,
@@ -305,9 +419,7 @@ export default class imageAutoUploadPlugin extends Plugin {
     }
   }
   
-  /**
-   * 下载带扩展名的远程图片并保存到 vault
-   */
+  // 下载带扩展名的远程图片并保存到 vault
   async download(url: string, folderPath: string, filename: string) {
     try {
       const response = await requestUrl({ url });
@@ -320,18 +432,15 @@ export default class imageAutoUploadPlugin extends Plugin {
       // 从 URL 提取扩展名
       const match = url.match(/\.(\w+)(\?|#|$)/);
       if (!match) {
-        warn(t('Skipped file with no extension')+':'+url);
-        return { ok: false, msg: t('No file extension in URL') };
+        warn(t('download.noExtension')+':'+url);
+        return { ok: false, msg: t('download.noExtension') };
       }
 
       const ext = match[1].toLowerCase();
 
-      // 确保扩展名是常见图片类型
-      // 使用工具类中定义的图片扩展名列表，去掉点号并转换为小写
-      const allowedExts = IMAGE_EXT_LIST.map(ext => ext.slice(1).toLowerCase());
-      if (!allowedExts.includes(ext)) {
-        warn(t('Skipped file with unsupported image type')+':'+ext);
-        return { ok: false, msg: t('Unsupported image type')+':'+ext };
+      if (!isValidImageExtension(ext)) {
+        warn(t('download.unsupportedType')+':'+ext);
+        return { ok: false, msg: t('download.unsupportedType')+':'+ext };
       }
 
       // 文件名清理
@@ -347,11 +456,12 @@ export default class imageAutoUploadPlugin extends Plugin {
 
       return { ok: true, msg: 'ok', path: savePath };
     } catch (err: any) {
-      error(t('Download failed')+':'+err);
-      return { ok: false, msg: err?.message || t('Download exception') };
+      error(t('download.failed')+':'+err);
+      return { ok: false, msg: err?.message || t('download.exception') };
     }
   }
 
+  // 过滤图片文件
   filterFile(fileArray: Image[]) {
     const imageList: Image[] = [];
 
@@ -384,19 +494,22 @@ export default class imageAutoUploadPlugin extends Plugin {
 
     return imageList;
   }
+
+  // 获取文件对象
   getFile(fileName: string, fileMap: any) {
     if (!fileMap) {
       fileMap = arrayToObject(this.app.vault.getFiles(), 'name');
     }
     return fileMap[fileName];
   }
-  // uploda all file
+
+  // upload all file
   async uploadAllFile() {
     let content = this.helper.getValue();
     const activeFIle = this.app.workspace.getActiveFile();
 
     if (!activeFIle) {
-      new Notice(t('Please open a file first'));
+      new Notice(t('main.openFileFirst'));
       return;
     }
 
@@ -463,22 +576,22 @@ export default class imageAutoUploadPlugin extends Plugin {
     }
 
     if (imageList.length === 0) {
-      new Notice(t('No image files parsed'));
+      new Notice(t('main.noImageParsed'));
       return;
     }
 
-    new Notice(t('uploadStart', { count: imageList.length }));
+    new Notice(t('main.uploadStart', { count: imageList.length }));
 
     try {
-      const concurrency = parseInt(this.settings.concurrencyMode);
+      const concurrency = getConcurrencyValue(this.settings.concurrencyMode);
       const res = await this.uploader.uploadWithLimit(
         imageList.map(item => item.obspath),
         concurrency
       );
 
       if (!res.success) {
-        new Notice(t('Some image uploads failed'));
-        warn(t('Some image uploads failed') + ':', res.msg);
+        new Notice(t('upload.someFailed'));
+        warn(t('upload.someFailed') + ':', res.msg);
       }
 
       const urls = [...(res.result || [])];
@@ -500,141 +613,56 @@ export default class imageAutoUploadPlugin extends Plugin {
       if (this.settings.deleteSource) {
         for (const image of imageList) {
           const fileDel = this.app.vault.getAbstractFileByPath(image.obspath);
-          if(fileDel) await this.app.vault.delete(fileDel);
+          if(fileDel) await this.app.fileManager.trashFile(fileDel);
         }
       }
 
-    new Notice(t('uploadComplete'));
+    new Notice(t('upload.complete'));
     } catch (error) {
-      new Notice(t('uploadFailed'));
-      error(t('uploadFailed') + ':', error);
-      new Notice(t('uploadFailedNotice'));
+      error(t('upload.failed') + ':', error);
+      new Notice(t('upload.failedNotice'));
     }
   }
 
-  setupPasteHandler() {
-    this.registerEvent(
-      this.app.workspace.on(
-        'editor-paste',
-        (evt: ClipboardEvent, editor: Editor, markdownView: MarkdownView) => {
-          const allowUpload = this.helper.getFrontmatterValue(
-            'image-auto-upload',
-            this.settings.uploadByClipSwitch
-          );
-
-          let files = evt.clipboardData.files;
-          if (!allowUpload) {
-            return;
+  // 处理粘贴中的网络图片再上传
+  async handleNetworkPasteImages(editor: Editor, imageList: any[]) {
+    try {
+      const res = await this.uploader.uploadFiles(imageList.map((i) => i.path));
+      if (res.success && res.result) {
+        let content = this.helper.getValue();
+        const urls = [...res.result];
+        imageList.forEach((img) => {
+          const newUrl = urls.shift();
+          if (newUrl) {
+            content = content.replace(
+              img.source,
+              `![${img.name}](${newUrl})`
+            );
           }
-          // 剪贴板内容有md格式的图片时
-          if (this.settings.workOnNetWork) {
-            const clipboardValue = evt.clipboardData.getData('text/plain');
-            const imageList = this.helper
-              .getImageLink(clipboardValue)
-              .filter(image => image.path.startsWith('http'))
-              .filter(
-                image =>
-                  !this.helper.hasBlackDomain(
-                    image.path,
-                    this.settings.newWorkBlackDomains
-                  )
-              );
-
-            if (imageList.length !== 0) {
-              this.uploader
-                .uploadFiles(imageList.map(item => item.path))
-                .then(res => {
-                  let value = this.helper.getValue();
-                  if (res.success) {
-                    let uploadUrlList = res.result;
-                    imageList.map(item => {
-                      const uploadImage = uploadUrlList.shift();
-                      value = value.replaceAll(
-                        item.source,
-                        `![${item.name}${this.settings.imageSizeSuffix || ''
-                        }](${uploadImage})`
-                      );
-                    });
-                    this.helper.setValue(value);
-                    const uploadUrlFullResultList = res.result || [];
-                    this.settings.uploadedImages = [
-                      ...(this.settings.uploadedImages || []),
-                      ...uploadUrlFullResultList,
-                    ];
-                    this.saveSettings();
-                  } else {
-                    new Notice(t('uploadError'));
-                  }
-                });
-            }
-          }
-
-          // 剪贴板中是图片时进行上传
-          if (this.canUpload(evt.clipboardData)) {
-            this.uploadFileAndEmbedImgurImage(
-              editor,
-              async (editor: Editor, pasteId: string) => {
-                let res = await this.uploader.uploadFromClipboard(evt);
-                if (!res.success) {
-                  this.handleFailedUpload(editor, pasteId, res.msg);
-                  return;
-                }
-                const url = res.url || '';
-                const uploadUrlFullResultList = res.result || [];
-                this.settings.uploadedImages = [
-                  ...(this.settings.uploadedImages || []),
-                  ...uploadUrlFullResultList,
-                ];
-                await this.saveSettings();
-                return url;
-              },
-              evt.clipboardData
-            ).catch();
-            evt.preventDefault();
-          }
-        }
-      )
-    );
-    this.registerEvent(
-      this.app.workspace.on(
-        'editor-drop',
-        async (evt: DragEvent, editor: Editor, markdownView: MarkdownView) => {
-          const allowUpload = this.helper.getFrontmatterValue(
-            'image-auto-upload',
-            this.settings.uploadByClipSwitch
-          );
-          let files = evt.dataTransfer.files;
-          if (!allowUpload) {
-            return;
-          }
-
-          if (files.length !== 0 && files[0].type.startsWith('image')) {
-            let files = evt.dataTransfer.files;
-            evt.preventDefault();
-
-            const data = await this.uploader.uploadFiles(Array.from(files));
-
-            if (data.success) {
-              const uploadUrlFullResultList = data.result ?? [];
-              this.settings.uploadedImages = [
-                ...(this.settings.uploadedImages ?? []),
-                ...uploadUrlFullResultList,
-              ];
-              this.saveSettings();
-              data.result.map((value: string) => {
-                let pasteId = (Math.random() + 1).toString(36).substring(2, 7);
-                this.insertTemporaryText(editor, pasteId);
-                this.embedMarkDownImage(editor, pasteId, value, files[0].name);
-              });
-            } else {
-              new Notice(t('uploadError'));
-            }
-          }
-        }
-      )
-    );
+        });
+        this.helper.setValue(content);
+        this.appendUploadedUrls(res.result);
+        new Notice(t("upload.complete"));
+      } else {
+        new Notice(t("upload.failed"));
+      }
+    } catch (e) {
+      error(t("upload.failed"), e);
+      new Notice(t("upload.failedNotice"));
+    }
+  } 
+  
+  // 将上传结果追加保存
+  appendUploadedUrls(urls: string[] = []) {
+    if (!urls.length) return;
+    this.settings.uploadedImages = [
+      ...(this.settings.uploadedImages || []),
+      ...urls,
+    ];
+    this.saveSettings();
   }
 
+  // 检查是否可以上传图片
   canUpload(clipboardData: DataTransfer) {
     this.settings.applyImage;
     const files = clipboardData.files;
@@ -653,6 +681,7 @@ export default class imageAutoUploadPlugin extends Plugin {
     }
   }
 
+  // 上传文件并嵌入 Imgur 图片
   async uploadFileAndEmbedImgurImage(
     editor: Editor,
     callback: Function,
@@ -669,15 +698,17 @@ export default class imageAutoUploadPlugin extends Plugin {
     }
   }
 
+  // 插入临时文本
   insertTemporaryText(editor: Editor, pasteId: string) {
     let progressText = imageAutoUploadPlugin.progressTextFor(pasteId);
     editor.replaceSelection(progressText + '\n');
   }
 
   private static progressTextFor(id: string) {
-    return t('uploading') + id;
+    return t('upload.uploading') + id;
   }
 
+  // 嵌入 Markdown 图片
   embedMarkDownImage(
     editor: Editor,
     pasteId: string,
@@ -694,17 +725,19 @@ export default class imageAutoUploadPlugin extends Plugin {
     );
   }
 
+  // 处理上传失败
   handleFailedUpload(editor: Editor, pasteId: string, reason: any) {
     new Notice(t(reason));
-    error(t('Failed request') + ': ' + reason);
+    error(t('upload.requestException') + ': ' + reason);
     let progressText = imageAutoUploadPlugin.progressTextFor(pasteId);
     imageAutoUploadPlugin.replaceFirstOccurrence(
       editor,
       progressText,
-      t('uploadFailedNotice')
+      t('upload.failedNotice')
     );
   }
 
+  // 替换第一个匹配项
   static replaceFirstOccurrence(
     editor: Editor,
     target: string,

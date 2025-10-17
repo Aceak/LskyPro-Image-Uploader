@@ -4,10 +4,8 @@
  */
 import { App, PluginSettingTab, Setting, Notice } from "obsidian";
 import imageAutoUploadPlugin from "./main";
-import { t, languageName } from "./lang/i18n";
+import { t, languageName} from "./lang/i18n";
 import { error, dbg } from "./utils";
-
-
 
 /**
  * 插件设置接口
@@ -21,7 +19,6 @@ export interface PluginSettings {
   token: string;                  // 认证令牌
   storage_id: string;             // 存储ID（V2版本）
   strategy_id: string;            // 策略ID（V1版本）
-  imageSizeSuffix: string;        // 图片尺寸后缀
   uploader: string;               // 上传器类型（V1或V2）
   workOnNetWork: boolean;         // 是否处理网络图片
   newWorkBlackDomains: string;    // 网络黑名单域名
@@ -46,7 +43,6 @@ export const DEFAULT_SETTINGS: PluginSettings = {
   storage_id:"",                 // 默认空存储ID
   strategy_id: "",               // 默认空策略ID
   uploadServer: "https://lsky.xxxx", // 默认服务器地址示例
-  imageSizeSuffix: "",           // 默认无尺寸后缀
   workOnNetWork: false,           // 默认不处理网络图片
   fixPath: false,                 // 默认不修复路径
   applyImage: true,               // 默认应用图片处理
@@ -55,6 +51,14 @@ export const DEFAULT_SETTINGS: PluginSettings = {
   concurrencyMode: "3",           // 默认中等并发模式
   language: "Auto",               // 默认自动语言
 }
+
+export type ConcurrencyMode = 'low' | 'medium' | 'high';
+
+export const ConcurrencyMap: Record<ConcurrencyMode, number> = {
+  low: 1,
+  medium: 3,
+  high: 5,
+};
 
 /**
  * 设置面板类
@@ -80,12 +84,12 @@ export class SettingTab extends PluginSettingTab {
   display(): void {
     let { containerEl } = this;
     containerEl.empty();
-    containerEl.createEl('h2', { text: t('Plugin Settings') });
+    containerEl.createEl('h2', { text: t('settings.title') });
     
     // 剪贴板自动上传设置
     new Setting(containerEl)
-      .setName(t('Auto upload from clipboard'))
-      .setDesc(t('Auto upload clipboard description'))
+      .setName(t('settings.autoUploadClipboard'))
+      .setDesc(t('settings.autoUploadClipboard.desc'))
       .addToggle(toggle =>
         toggle
           .setValue(this.plugin.settings.uploadByClipSwitch)
@@ -96,8 +100,8 @@ export class SettingTab extends PluginSettingTab {
       );
 
     new Setting(containerEl)
-      .setName(t('Auto upload attachments'))
-      .setDesc(t('Auto upload attachments description'))
+      .setName(t('settings.autoUploadAttachments'))
+      .setDesc(t('settings.autoUploadAttachments.desc'))
       .addToggle(toggle =>
         toggle
           .setValue(this.plugin.settings.uploadAttachmentsSwitch)
@@ -108,8 +112,8 @@ export class SettingTab extends PluginSettingTab {
       );
     
     new Setting(containerEl)
-      .setName(t('Default uploader'))
-      .setDesc(t('Default uploader description'))
+      .setName(t('settings.defaultUploader'))
+      .setDesc(t('settings.defaultUploader.desc'))
       .addDropdown(cb =>
           cb
             .addOption('LskyPro-V2', 'LskyPro v2')
@@ -126,11 +130,11 @@ export class SettingTab extends PluginSettingTab {
 
     // 无论选择哪个版本，都显示基本设置
       new Setting(containerEl)
-      .setName(t('LskyPro server domain'))
-      .setDesc(t('LskyPro server domain description'))
+      .setName(t('settings.serverDomain'))
+      .setDesc(t('settings.serverDomain.desc'))
       .addText(text =>
         text
-          .setPlaceholder(t('Please input LskyPro server domain'))
+          .setPlaceholder(t('settings.serverDomain.placeholder'))
           .setValue(this.plugin.settings.uploadServer)
           .onChange(async key => {
             this.plugin.settings.uploadServer = key;
@@ -140,11 +144,11 @@ export class SettingTab extends PluginSettingTab {
           })
       );
       new Setting(containerEl)
-      .setName(t('LskyPro Token'))
-      .setDesc(t('LskyPro Token description'))
+      .setName(t('settings.token'))
+      .setDesc(t('settings.token.desc'))
       .addText(text =>
         text
-          .setPlaceholder(t('Please input LskyPro Token'))
+          .setPlaceholder(t('settings.token.placeholder'))
           .setValue(this.plugin.settings.token)
           .onChange(async key => {
             this.plugin.settings.token = key;
@@ -157,11 +161,11 @@ export class SettingTab extends PluginSettingTab {
     // 根据版本显示对应的存储ID设置
     if (this.plugin.settings.uploader === 'LskyPro-V2') {
       new Setting(containerEl)
-      .setName(t('LskyPro Storage ID'))
-      .setDesc(t('LskyPro v2 Storage ID description'))
+      .setName(t('settings.storageId'))
+      .setDesc(t('settings.storageId.desc'))
       .addText(text =>
         text
-          .setPlaceholder(t('Please input LskyPro Storage ID'))
+          .setPlaceholder(t('settings.storageId.placeholder'))
           .setValue(this.plugin.settings.storage_id)
           .onChange(async key => {
             this.plugin.settings.storage_id = key;
@@ -172,11 +176,11 @@ export class SettingTab extends PluginSettingTab {
       );
     } else if (this.plugin.settings.uploader === 'LskyPro-V1') {
       new Setting(containerEl)
-      .setName(t('LskyPro Strategy ID（optional）'))
-      .setDesc(t('LskyPro v1 Strategy ID description'))
+      .setName(t('settings.strategyId'))
+      .setDesc(t('settings.strategyId.desc'))
       .addText(text =>
         text
-          .setPlaceholder(t('Please input LskyPro Strategy ID'))
+          .setPlaceholder(t('settings.strategyId.placeholder'))
           .setValue(this.plugin.settings.strategy_id)
           .onChange(async key => {
             this.plugin.settings.strategy_id = key;
@@ -188,22 +192,10 @@ export class SettingTab extends PluginSettingTab {
     }
 
 
-    new Setting(containerEl)
-      .setName(t('Image size suffix'))
-      .setDesc(t('Image size suffix Description'))
-      .addText(text =>
-        text
-          .setPlaceholder(t('Please input image size suffix'))
-          .setValue(this.plugin.settings.imageSizeSuffix)
-          .onChange(async key => {
-            this.plugin.settings.imageSizeSuffix = key;
-            await this.plugin.saveSettings();
-          })
-      );
 
     new Setting(containerEl)
-      .setName(t('Work on network'))
-      .setDesc(t('Work on network Description'))
+      .setName(t('settings.workOnNetwork'))
+      .setDesc(t('settings.workOnNetwork.desc'))
       .addToggle(toggle =>
         toggle
           .setValue(this.plugin.settings.workOnNetWork)
@@ -215,8 +207,8 @@ export class SettingTab extends PluginSettingTab {
       );
 
     new Setting(containerEl)
-      .setName(t('Network Domain Black List'))
-      .setDesc(t('Network Domain Black List Description'))
+      .setName(t('settings.blacklist'))
+      .setDesc(t('settings.blacklist.desc'))
       .addTextArea(textArea =>
         textArea
           .setValue(this.plugin.settings.newWorkBlackDomains)
@@ -227,8 +219,8 @@ export class SettingTab extends PluginSettingTab {
       );
 
     new Setting(containerEl)
-      .setName(t('Upload when clipboard has image and text together'))
-      .setDesc(t('Advanced clipboard upload description'))
+      .setName(t('settings.clipboardMixed'))
+      .setDesc(t('settings.clipboardMixed.desc'))
       .addToggle(toggle =>
         toggle
           .setValue(this.plugin.settings.applyImage)
@@ -240,8 +232,8 @@ export class SettingTab extends PluginSettingTab {
       );
 
     new Setting(containerEl)
-      .setName(t('Delete source file after you upload file'))
-      .setDesc(t('Delete source file Description'))
+      .setName(t('settings.deleteSource'))
+      .setDesc(t('settings.deleteSource.desc'))
       .addToggle(toggle =>
         toggle
           .setValue(this.plugin.settings.deleteSource)
@@ -252,33 +244,30 @@ export class SettingTab extends PluginSettingTab {
           })
       );
 
-      const ConcurrencyLevels = {
-        Low: '1',
-        Medium: '3',
-        High: '5'
-      };
+    new Setting(containerEl)
+      .setName(t('settings.concurrency'))
+      .setDesc(t('settings.concurrency.desc'))
+      .addDropdown(cb => {
+        cb.addOption('low', t('settings.concurrency.low'));
+        cb.addOption('medium', t('settings.concurrency.medium'));
+        cb.addOption('high', t('settings.concurrency.high'));
 
-      new Setting(containerEl)
-        .setName(t('Upload concurrency'))
-        .setDesc(t('Upload concurrency description'))
-        .addDropdown(cb => {
-          Object.entries(ConcurrencyLevels).forEach(([key, value]) => {
-            cb.addOption(value, t(key)); // 翻译键使用 'LOW'、'MEDIUM'、'HIGH'
+        cb.setValue(this.plugin.settings.concurrencyMode || 'medium')
+          .onChange(async (value) => {
+            this.plugin.settings.concurrencyMode = value;
+            await this.plugin.saveSettings();
+
+            // 获取当前选项的 i18n 文本
+            const modeLabel = t(`settings.concurrency.${value}` as any);
+            const message = `${t('settings.concurrency.switched')} ${modeLabel}`;
+
+            new Notice(message);
           });
+      });
 
-          cb
-            .setValue(this.plugin.settings.concurrencyMode || ConcurrencyLevels.Medium)
-            .onChange(async value => {
-              this.plugin.settings.concurrencyMode = value;
-              await this.plugin.saveSettings();
-              const key = (Object.keys(ConcurrencyLevels) as (keyof typeof ConcurrencyLevels)[]).find(k => ConcurrencyLevels[k] === value);
-              new Notice(`${t('concurrencyModeSwitchedTo')} ${t(key)}`);
-            });
-        });
-
-      new Setting(containerEl)
-      .setName(t('Language'))
-      .setDesc(t('Language Description'))
+    new Setting(containerEl)
+      .setName(t('settings.language'))
+      .setDesc(t('settings.language.desc'))
       .addDropdown(dropdown => {
         dropdown
           .addOption('auto', 'Auto')
@@ -292,16 +281,15 @@ export class SettingTab extends PluginSettingTab {
             try {
               const { setLanguage } = await import('./lang/i18n');
               setLanguage(value.toLowerCase());
-              dbg(t('Language switched to'), value);
-              new Notice(t('Language switched to') + ' '  + languageName[value]);
+              dbg(t('settings.language.switched'), value);
+              new Notice(t('settings.language.switched') + ' '  + languageName[value]);
               this.display(); 
             } catch (e) {
-              new Notice(t('Language switch failed'));
-              error(t('Language switch failed:', e));
+              new Notice(t('settings.language.failed'));
+              error(t('settings.language.failed', + ':' + e));
             }
           });
       });
 
-    
   }
 }

@@ -29,6 +29,17 @@ export const IMAGE_EXT_LIST = [
 ];
 
 /**
+ * 检查给定文件扩展名是否为合法图片类型
+ * @param ext 文件扩展名（可带点，也可不带点）
+ * @returns 如果是受支持的图片类型则返回 true，否则 false
+ */
+export function isValidImageExtension(ext: string): boolean {
+  if (!ext) return false;
+  const normalized = ext.startsWith(".") ? ext.toLowerCase() : "." + ext.toLowerCase();
+  return IMAGE_EXT_LIST.includes(normalized);
+}
+
+/**
  * 从文件路径中提取扩展名（不依赖 Node.js）
  * @param path 文件路径，例如 "foo/bar/image.png"
  * @returns 扩展名（带点），例如 ".png"；若无扩展名则返回空字符串
@@ -184,18 +195,13 @@ export function resolveImageFile(app: App, rawLink: string): TFile | null {
   return file;
 }
 
-/**
- * 获取统一的日志前缀（带时间戳）
- */
+// 获取统一的日志前缀（带时间戳）
 function logPrefix(level: string): string {
   const now = new Date().toISOString().split("T")[1].replace("Z", "");
-  return `[LSKY-${level.toUpperCase()} ${now}]`;
+  return `[Lsky-${level.toUpperCase()} ${now}]`;
 }
 
-/**
- * 调试输出函数
- * 仅当 window.__LSKY_DEBUG__ === true 时才输出日志
- */
+// 调试输出函数(仅当 window.__LSKY_DEBUG__ === true 时才输出日志)
 export function dbg(...args: any[]): void {
   try {
     if (typeof window !== "undefined" && (window as any).__LSKY_DEBUG__ === true) {
@@ -206,10 +212,7 @@ export function dbg(...args: any[]): void {
   }
 }
 
-/**
- * 警告输出函数
- * 永远输出，用于潜在问题提示
- */
+// 警告输出函数
 export function warn(...args: any[]): void {
   try {
     console.warn(logPrefix("warn"), ...args);
@@ -218,10 +221,7 @@ export function warn(...args: any[]): void {
   }
 }
 
-/**
- * 错误输出函数
- * 永远输出，用于严重错误
- */
+// 错误输出函数
 export function error(...args: any[]): void {
   try {
     console.error(logPrefix("error"), ...args);
@@ -230,35 +230,53 @@ export function error(...args: any[]): void {
   }
 }
 
-// 替代 Node.js 的 path 模块
-/** 获取扩展名（替代 path.extname） */
+// 获取文件扩展名（替代 path.extname）
 export function getExt(path: string): string {
   const i = path.lastIndexOf(".");
   return i >= 0 ? path.slice(i) : "";
 }
 
-/** 获取文件名（替代 path.basename） */
+// 获取文件名（替代 path.basename）
 export function getFileName(path: string): string {
   const parts = path.split(/[\\/]/);
   return parts[parts.length - 1];
 }
 
-/** 获取文件所在目录（替代 path.dirname） */
+// 获取文件所在目录（替代 path.dirname）
 export function getDir(path: string): string {
   const idx = path.lastIndexOf("/");
   return idx >= 0 ? path.slice(0, idx) : "";
 }
 
-/** 去掉扩展名 */
+// 获取文件名（不包含扩展名）
 export function getNameWithoutExt(path: string): string {
   const file = getFileName(path);
   const idx = file.lastIndexOf(".");
   return idx >= 0 ? file.slice(0, idx) : file;
 }
 
+// 获取平台环境
 export function getPlatformEnv(app: App) {
   const adapter = app.vault.adapter;
   if (Platform.isMobileApp) return "mobile";
   if (Platform.isDesktopApp && adapter instanceof FileSystemAdapter) return "desktop";
   return "web";
+}
+
+// 获取并发值
+export function getConcurrencyValue(mode: string | number | undefined): number {
+  if (typeof mode === "number") return mode;
+
+  if (!mode) return 3;
+
+  const map: Record<string, number> = {
+    low: 1,
+    medium: 3,
+    high: 5,
+  };
+
+  const parsed = Number(mode);
+  if (!isNaN(parsed) && parsed > 0) return parsed;
+
+  return map[mode] ?? 3;
 }

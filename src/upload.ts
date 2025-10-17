@@ -203,7 +203,7 @@ private async uploadRawFile(file: File): Promise<UploadResult> {
     const data = await this.app.vault.readBinary(abstractFile);
     
     // 获取文件扩展名，默认为 png
-    const fileExt = abstractFile.extension || 'png';
+    const fileExt = abstractFile.extension;
     
     // 创建 Blob 和 File 对象
     const file = new File([new Blob([data], { type: 'image/${fileExt}' })], abstractFile.name);

@@ -1,4 +1,6 @@
 import { moment } from 'obsidian';
+import { dbg, warn } from '..//utils';
+
 
 import ar from './locale/ar';
 import cz from './locale/cz';
@@ -24,10 +26,7 @@ import tr from './locale/tr';
 import zhCN from './locale/zh-cn';
 import zhTW from './locale/zh-tw';
 
-// ================================
-// 1️⃣ 语言映射表
-// ================================
-const localeMap: Record<string, Partial<typeof en>> = {
+const localeMap: Record<string, any> = {
   ar,
   cs: cz,
   da,
@@ -50,36 +49,73 @@ const localeMap: Record<string, Partial<typeof en>> = {
   ru,
   tr,
   'zh-cn': zhCN,
-  'zh-tw': zhTW,
+  'zh-tw': zhTW
 };
 
+export const languageName: Record<string, string> = {
+  'auto': 'Auto',
+  'zh-cn': '简体中文',
+  'zh-tw': '繁體中文',
+  'en': 'English'
+};
 
-const currentLocale = moment.locale();
-const locale = localeMap[currentLocale] ?? en;
+let currentLocale = moment.locale();
+let locale = localeMap[currentLocale] ?? en;
 
-export type TranslationKey = keyof typeof en;
+export function getLanguage() {
+  return currentLocale;
+}
 
-export function t<K extends TranslationKey>(
-  key: K,
-  vars?: Record<string, string | number>
-): string {
-  const template = (locale && locale[key]) || en[key];
+export function setLanguage(lang: string) {
+  if (lang === "auto" || lang === "Auto") {
+    currentLocale = moment.locale();
+    dbg("[i18n] Auto mode -> system locale:", currentLocale);
+  } else {
+    currentLocale = lang;
+    dbg("[i18n] Switched to language:", lang);
+  }
+  locale = localeMap[currentLocale] ?? en;
+  if (locale === en && currentLocale !== 'en') {
+    warn(`[i18n] Missing translation for "${currentLocale}", fallback to English.`);
+  } else {
+    dbg("[i18n] Active locale:", currentLocale);
+  }
+}
+
+function getNested(obj: any, path: string): any {
+  return path.split('.').reduce((acc, key) => (acc && acc[key] !== undefined ? acc[key] : undefined), obj);
+}
+
+export function t(key: string, vars?: Record<string, string | number>): string {
+  let template = getNested(locale, key);
+
+  if (template === undefined) {
+    template = getNested(en, key);
+    if (template === undefined) {
+      warn(`[i18n] Missing translation key: "${key}"`);
+      return key;
+    }
+  }
 
   if (!vars) return template;
 
-  return template.replace(/\{\{(.*?)\}\}/g, (_, rawKey) => {
+  return template.replace(/\{\{(.*?)\}\}/g, (_match: string, rawKey: string): string => {
     const cleanKey = rawKey.trim();
-    const value = vars[cleanKey];
-    return value !== undefined ? String(value) : '';
+    if (!(cleanKey in vars)) {
+      warn(`[i18n] Missing variable "${cleanKey}" for key "${key}"`);
+      return `{{${cleanKey}}}`;
+    }
+    return String(vars[cleanKey]);
   });
 }
 
 export function tn(
-  singular: TranslationKey,
-  plural: TranslationKey,
+  singular: string,
+  plural: string,
   count: number,
   vars?: Record<string, string | number>
 ): string {
   const key = count === 1 ? singular : plural;
   return t(key, { ...vars, count });
 }
+

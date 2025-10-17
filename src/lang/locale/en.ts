@@ -29,7 +29,7 @@ export default {
   ].join("\n"),
 
   // Upload messages
-  'uploadStart': "Found {{count}} image files, starting upload",
+  "uploadStart": "Found {{count}} image files, starting upload",
   "uploadComplete": "Image upload completed",
   "uploadFailed": "Image upload failed",
   "uploadFailedNotice": "An error occurred during upload, please check the console log",
@@ -89,9 +89,13 @@ export default {
   "Delete source file after you upload file": "Delete source file after upload",
   "Delete source file Description": "Remove original files after successful upload",
   "Upload concurrency": "Upload concurrency",
-  "Upload concurrency description": "Number of concurrent uploads",
-  "Single": "Single",
+  "Upload concurrency description": "Number of concurrent uploads, recommended to adjust based on network conditions and image bed configuration. Low/Medium/High correspond to 1/3/5 respectively.",
+  "Low": "Low",
   "Medium": "Medium",
   "High": "High",
-  "concurrencyModeSwitchedTo": "Concurrency mode switched to "
+  "concurrencyModeSwitchedTo": "Concurrency mode switched to",
+  "Language": "Language",
+  "Language Description": "Select plugin language. 'Auto' will follow Obsidian's interface language.",
+  "Language switched to": "Language switched to",
+  "Language switch failed": "Language switch failed"
 };

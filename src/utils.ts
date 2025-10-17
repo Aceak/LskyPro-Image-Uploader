@@ -3,7 +3,7 @@
  * 提供插件中使用的各种通用辅助方法
  */
 import { Readable } from "stream";
-import { App, TFile, Platform, FileSystemAdapter } from 'obsidian';
+import { App, TFile, Platform, FileSystemAdapter } from "obsidian";
 
 /**
  * 字符串键映射接口
@@ -196,7 +196,7 @@ function logPrefix(level: string): string {
  * 调试输出函数
  * 仅当 window.__LSKY_DEBUG__ === true 时才输出日志
  */
-export function dbg(...args: any[]) {
+export function dbg(...args: any[]): void {
   try {
     if (typeof window !== "undefined" && (window as any).__LSKY_DEBUG__ === true) {
       console.log(logPrefix("debug"), ...args);
@@ -210,7 +210,7 @@ export function dbg(...args: any[]) {
  * 警告输出函数
  * 永远输出，用于潜在问题提示
  */
-export function warn(...args: any[]) {
+export function warn(...args: any[]): void {
   try {
     console.warn(logPrefix("warn"), ...args);
   } catch {
@@ -222,7 +222,7 @@ export function warn(...args: any[]) {
  * 错误输出函数
  * 永远输出，用于严重错误
  */
-export function error(...args: any[]) {
+export function error(...args: any[]): void {
   try {
     console.error(logPrefix("error"), ...args);
   } catch {

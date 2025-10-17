@@ -4,7 +4,10 @@
  */
 import { App, PluginSettingTab, Setting, Notice } from "obsidian";
 import imageAutoUploadPlugin from "./main";
-import { t } from "./lang/i18n";
+import { t, languageName } from "./lang/i18n";
+import { error, dbg } from "./utils";
+
+
 
 /**
  * 插件设置接口
@@ -26,6 +29,7 @@ export interface PluginSettings {
   applyImage: boolean;            // 应用图片处理
   deleteSource: boolean;          // 上传后删除源文件
   concurrencyMode: string;        // 并发模式（1、3、5）
+  language: string;               // 语言设置（Auto、zh-cn、en）
   [propName: string]: any;        // 允许其他动态属性
 }
 
@@ -49,6 +53,7 @@ export const DEFAULT_SETTINGS: PluginSettings = {
   newWorkBlackDomains: "",       // 默认无黑名单域名
   deleteSource: false,            // 默认不删除源文件
   concurrencyMode: "3",           // 默认中等并发模式
+  language: "Auto",               // 默认自动语言
 }
 
 /**
@@ -95,9 +100,9 @@ export class SettingTab extends PluginSettingTab {
       .setDesc(t('Auto upload attachments description'))
       .addToggle(toggle =>
         toggle
-          .setValue(this.plugin.settings.applyImage)
+          .setValue(this.plugin.settings.uploadAttachmentsSwitch)
           .onChange(async value => {
-            this.plugin.settings.applyImage = value;
+            this.plugin.settings.uploadAttachmentsSwitch = value;
             await this.plugin.saveSettings();
           })
       );
@@ -247,21 +252,55 @@ export class SettingTab extends PluginSettingTab {
           })
       );
 
+      const ConcurrencyLevels = {
+        Low: '1',
+        Medium: '3',
+        High: '5'
+      };
+
       new Setting(containerEl)
-      .setName(t('Upload concurrency'))
-      .setDesc(t('Upload concurrency description'))
-      .addDropdown((cb) =>
-        cb
-          .addOption('1', t('Single'))
-          .addOption('3', t('Medium'))
-          .addOption('5', t('High'))
-          .setValue(this.plugin.settings.concurrencyMode || "3")
-          .onChange(async (value) => {
-            this.plugin.settings.concurrencyMode = value;
+        .setName(t('Upload concurrency'))
+        .setDesc(t('Upload concurrency description'))
+        .addDropdown(cb => {
+          Object.entries(ConcurrencyLevels).forEach(([key, value]) => {
+            cb.addOption(value, t(key)); // 翻译键使用 'LOW'、'MEDIUM'、'HIGH'
+          });
+
+          cb
+            .setValue(this.plugin.settings.concurrencyMode || ConcurrencyLevels.Medium)
+            .onChange(async value => {
+              this.plugin.settings.concurrencyMode = value;
+              await this.plugin.saveSettings();
+              const key = (Object.keys(ConcurrencyLevels) as (keyof typeof ConcurrencyLevels)[]).find(k => ConcurrencyLevels[k] === value);
+              new Notice(`${t('concurrencyModeSwitchedTo')} ${t(key)}`);
+            });
+        });
+
+      new Setting(containerEl)
+      .setName(t('Language'))
+      .setDesc(t('Language Description'))
+      .addDropdown(dropdown => {
+        dropdown
+          .addOption('auto', 'Auto')
+          .addOption('en', 'English')
+          .addOption('zh-cn', '简体中文')
+          .addOption('zh-tw', '繁體中文')
+          .setValue(this.plugin.settings.language || 'Auto')
+          .onChange(async (value: string) => {
+            this.plugin.settings.language = value;
             await this.plugin.saveSettings();
-            new Notice(t('concurrencyModeSwitchedTo', { mode: value }));
-          })
-      );
+            try {
+              const { setLanguage } = await import('./lang/i18n');
+              setLanguage(value.toLowerCase());
+              dbg(t('Language switched to'), value);
+              new Notice(t('Language switched to') + ' '  + languageName[value]);
+              this.display(); 
+            } catch (e) {
+              new Notice(t('Language switch failed'));
+              error(t('Language switch failed:', e));
+            }
+          });
+      });
 
     
   }

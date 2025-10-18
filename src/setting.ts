@@ -1,55 +1,95 @@
-import { App, PluginSettingTab, Setting } from "obsidian";
+/**
+ * 设置模块
+ * 定义插件的设置接口、默认值和设置面板
+ */
+import { App, PluginSettingTab, Setting, Notice } from "obsidian";
 import imageAutoUploadPlugin from "./main";
-import { t } from "./lang/helpers";
+import { t, languageName} from "./lang/i18n";
+import { error, dbg } from "./utils";
 
+/**
+ * 插件设置接口
+ * 定义所有可配置的插件选项
+ */
 export interface PluginSettings {
-  uploadByClipSwitch: boolean;
-  uploadServer: string;
-  token: string;
-  storage_id: string;
-  strategy_id: string; // 为v1版本添加的字段
-  imageSizeSuffix: string;
-  uploader: string;
-  workOnNetWork: boolean;
-  newWorkBlackDomains: string;
-  fixPath: boolean;
-  applyImage: boolean;
-  deleteSource: boolean;
-  [propName: string]: any;
+  _debug: boolean;                // 调试模式，用于开发和测试
+  uploadByClipSwitch: boolean;    // 启用/禁用剪贴板自动上传
+  uploadAttachmentsSwitch: boolean; // 启用/禁用附件自动上传
+  uploadServer: string;           // LskyPro服务器地址
+  token: string;                  // 认证令牌
+  storage_id: string;             // 存储ID（V2版本）
+  strategy_id: string;            // 策略ID（V1版本）
+  uploader: string;               // 上传器类型（V1或V2）
+  workOnNetWork: boolean;         // 是否处理网络图片
+  newWorkBlackDomains: string;    // 网络黑名单域名
+  fixPath: boolean;               // 修复路径
+  applyImage: boolean;            // 应用图片处理
+  deleteSource: boolean;          // 上传后删除源文件
+  concurrencyMode: string;        // 并发模式（1、3、5）
+  language: string;               // 语言设置（Auto、zh-cn、en）
+  [propName: string]: any;        // 允许其他动态属性
 }
 
+/**
+ * 默认设置值
+ * 当用户首次安装插件时使用
+ */
 export const DEFAULT_SETTINGS: PluginSettings = {
-  uploadByClipSwitch: true,
-  uploader: "LskyPro-V2",
-  token: "",
-  storage_id:"",
-  strategy_id: "", // v1版本的默认存储ID
-  uploadServer: "https://lsky.xxxx",
-  imageSizeSuffix: "",
-  workOnNetWork: false,
-  fixPath: false,
-  applyImage: true,
-  newWorkBlackDomains: "",
-  deleteSource: false,
+  _debug: false,                  // 默认禁用调试模式
+  uploadByClipSwitch: true,       // 默认启用剪贴板自动上传
+  uploadAttachmentsSwitch: true,  // 默认启用附件自动上传
+  uploader: "LskyPro-V2",         // 默认使用V2版本上传器
+  token: "",                     // 默认空令牌
+  storage_id:"",                 // 默认空存储ID
+  strategy_id: "",               // 默认空策略ID
+  uploadServer: "https://lsky.xxxx", // 默认服务器地址示例
+  workOnNetWork: false,           // 默认不处理网络图片
+  fixPath: false,                 // 默认不修复路径
+  applyImage: true,               // 默认应用图片处理
+  newWorkBlackDomains: "",       // 默认无黑名单域名
+  deleteSource: false,            // 默认不删除源文件
+  concurrencyMode: "3",           // 默认中等并发模式
+  language: "Auto",               // 默认自动语言
 }
 
-export class SettingTab extends PluginSettingTab {
-  plugin: imageAutoUploadPlugin;
+export type ConcurrencyMode = 'low' | 'medium' | 'high';
 
+export const ConcurrencyMap: Record<ConcurrencyMode, number> = {
+  low: 1,
+  medium: 3,
+  high: 5,
+};
+
+/**
+ * 设置面板类
+ * 负责创建和管理插件的设置界面
+ */
+export class SettingTab extends PluginSettingTab {
+  plugin: imageAutoUploadPlugin;   // 插件实例引用
+
+  /**
+   * 构造函数
+   * @param app Obsidian应用实例
+   * @param plugin 插件实例
+   */
   constructor(app: App, plugin: imageAutoUploadPlugin) {
     super(app, plugin);
     this.plugin = plugin;
   }
 
+  /**
+   * 显示设置面板
+   * 创建并渲染所有设置项
+   */
   display(): void {
     let { containerEl } = this;
     containerEl.empty();
-    containerEl.createEl("h2", { text: t("Plugin Settings") });
+    containerEl.createEl('h2', { text: t('settings.title') });
+    
+    // 剪贴板自动上传设置
     new Setting(containerEl)
-      .setName(t("Auto pasted upload"))
-      .setDesc(
-        "启用该选项后，黏贴图片时会自动上传到lsky图床"
-      )
+      .setName(t('settings.autoUploadClipboard'))
+      .setDesc(t('settings.autoUploadClipboard.desc'))
       .addToggle(toggle =>
         toggle
           .setValue(this.plugin.settings.uploadByClipSwitch)
@@ -60,12 +100,24 @@ export class SettingTab extends PluginSettingTab {
       );
 
     new Setting(containerEl)
-      .setName(t("Default uploader"))
-      .setDesc(t("Default uploader"))
+      .setName(t('settings.autoUploadAttachments'))
+      .setDesc(t('settings.autoUploadAttachments.desc'))
+      .addToggle(toggle =>
+        toggle
+          .setValue(this.plugin.settings.uploadAttachmentsSwitch)
+          .onChange(async value => {
+            this.plugin.settings.uploadAttachmentsSwitch = value;
+            await this.plugin.saveSettings();
+          })
+      );
+    
+    new Setting(containerEl)
+      .setName(t('settings.defaultUploader'))
+      .setDesc(t('settings.defaultUploader.desc'))
       .addDropdown(cb =>
           cb
-            .addOption("LskyPro-V2", "LskyPro v2")
-            .addOption("LskyPro-V1", "LskyPro v1")
+            .addOption('LskyPro-V2', 'LskyPro v2')
+            .addOption('LskyPro-V1', 'LskyPro v1')
             .setValue(this.plugin.settings.uploader)
             .onChange(async value => {
               this.plugin.settings.uploader = value;
@@ -78,11 +130,11 @@ export class SettingTab extends PluginSettingTab {
 
     // 无论选择哪个版本，都显示基本设置
       new Setting(containerEl)
-      .setName("LskyPro 域名")
-      .setDesc("LskyPro 域名（不需要填写完整的API路径）")
+      .setName(t('settings.serverDomain'))
+      .setDesc(t('settings.serverDomain.desc'))
       .addText(text =>
         text
-          .setPlaceholder("请输入LskyPro 域名")
+          .setPlaceholder(t('settings.serverDomain.placeholder'))
           .setValue(this.plugin.settings.uploadServer)
           .onChange(async key => {
             this.plugin.settings.uploadServer = key;
@@ -92,11 +144,11 @@ export class SettingTab extends PluginSettingTab {
           })
       );
       new Setting(containerEl)
-      .setName("LskyPro Token")
-      .setDesc("LskyPro Token")
+      .setName(t('settings.token'))
+      .setDesc(t('settings.token.desc'))
       .addText(text =>
         text
-          .setPlaceholder("请输入LskyPro Token")
+          .setPlaceholder(t('settings.token.placeholder'))
           .setValue(this.plugin.settings.token)
           .onChange(async key => {
             this.plugin.settings.token = key;
@@ -107,13 +159,13 @@ export class SettingTab extends PluginSettingTab {
       );
       
     // 根据版本显示对应的存储ID设置
-    if (this.plugin.settings.uploader === "LskyPro-V2") {
+    if (this.plugin.settings.uploader === 'LskyPro-V2') {
       new Setting(containerEl)
-      .setName("LskyPro Storage ID")
-      .setDesc("LskyPro v2版本的存储ID")
+      .setName(t('settings.storageId'))
+      .setDesc(t('settings.storageId.desc'))
       .addText(text =>
         text
-          .setPlaceholder("请输入LskyPro Storage ID")
+          .setPlaceholder(t('settings.storageId.placeholder'))
           .setValue(this.plugin.settings.storage_id)
           .onChange(async key => {
             this.plugin.settings.storage_id = key;
@@ -122,13 +174,13 @@ export class SettingTab extends PluginSettingTab {
             this.plugin.reinitUploader();
           })
       );
-    } else if (this.plugin.settings.uploader === "LskyPro-V1") {
+    } else if (this.plugin.settings.uploader === 'LskyPro-V1') {
       new Setting(containerEl)
-      .setName("LskyPro Strategy ID（可选）")
-      .setDesc("LskyPro v1版本的储存策略ID（可选）")
+      .setName(t('settings.strategyId'))
+      .setDesc(t('settings.strategyId.desc'))
       .addText(text =>
         text
-          .setPlaceholder("请输入LskyPro Strategy ID")
+          .setPlaceholder(t('settings.strategyId.placeholder'))
           .setValue(this.plugin.settings.strategy_id)
           .onChange(async key => {
             this.plugin.settings.strategy_id = key;
@@ -140,22 +192,10 @@ export class SettingTab extends PluginSettingTab {
     }
 
 
-    new Setting(containerEl)
-      .setName(t("Image size suffix"))
-      .setDesc(t("Image size suffix Description"))
-      .addText(text =>
-        text
-          .setPlaceholder(t("Please input image size suffix"))
-          .setValue(this.plugin.settings.imageSizeSuffix)
-          .onChange(async key => {
-            this.plugin.settings.imageSizeSuffix = key;
-            await this.plugin.saveSettings();
-          })
-      );
 
     new Setting(containerEl)
-      .setName(t("Work on network"))
-      .setDesc(t("Work on network Description"))
+      .setName(t('settings.workOnNetwork'))
+      .setDesc(t('settings.workOnNetwork.desc'))
       .addToggle(toggle =>
         toggle
           .setValue(this.plugin.settings.workOnNetWork)
@@ -167,8 +207,8 @@ export class SettingTab extends PluginSettingTab {
       );
 
     new Setting(containerEl)
-      .setName(t("Network Domain Black List"))
-      .setDesc(t("Network Domain Black List Description"))
+      .setName(t('settings.blacklist'))
+      .setDesc(t('settings.blacklist.desc'))
       .addTextArea(textArea =>
         textArea
           .setValue(this.plugin.settings.newWorkBlackDomains)
@@ -179,12 +219,8 @@ export class SettingTab extends PluginSettingTab {
       );
 
     new Setting(containerEl)
-      .setName(t("Upload when clipboard has image and text together"))
-      .setDesc(
-        t(
-          "When you copy, some application like Excel will image and text to clipboard, you can upload or not."
-        )
-      )
+      .setName(t('settings.clipboardMixed'))
+      .setDesc(t('settings.clipboardMixed.desc'))
       .addToggle(toggle =>
         toggle
           .setValue(this.plugin.settings.applyImage)
@@ -196,8 +232,8 @@ export class SettingTab extends PluginSettingTab {
       );
 
     new Setting(containerEl)
-      .setName(t("Delete source file after you upload file"))
-      .setDesc(t("Delete source file in ob assets after you upload file."))
+      .setName(t('settings.deleteSource'))
+      .setDesc(t('settings.deleteSource.desc'))
       .addToggle(toggle =>
         toggle
           .setValue(this.plugin.settings.deleteSource)
@@ -207,5 +243,53 @@ export class SettingTab extends PluginSettingTab {
             await this.plugin.saveSettings();
           })
       );
+
+    new Setting(containerEl)
+      .setName(t('settings.concurrency'))
+      .setDesc(t('settings.concurrency.desc'))
+      .addDropdown(cb => {
+        cb.addOption('low', t('settings.concurrency.low'));
+        cb.addOption('medium', t('settings.concurrency.medium'));
+        cb.addOption('high', t('settings.concurrency.high'));
+
+        cb.setValue(this.plugin.settings.concurrencyMode || 'medium')
+          .onChange(async (value) => {
+            this.plugin.settings.concurrencyMode = value;
+            await this.plugin.saveSettings();
+
+            // 获取当前选项的 i18n 文本
+            const modeLabel = t(`settings.concurrency.${value}` as any);
+            const message = `${t('settings.concurrency.switched')} ${modeLabel}`;
+
+            new Notice(message);
+          });
+      });
+
+    new Setting(containerEl)
+      .setName(t('settings.language'))
+      .setDesc(t('settings.language.desc'))
+      .addDropdown(dropdown => {
+        dropdown
+          .addOption('auto', 'Auto')
+          .addOption('en', 'English')
+          .addOption('zh-cn', '简体中文')
+          .addOption('zh-tw', '繁體中文')
+          .setValue(this.plugin.settings.language || 'Auto')
+          .onChange(async (value: string) => {
+            this.plugin.settings.language = value;
+            await this.plugin.saveSettings();
+            try {
+              const { setLanguage } = await import('./lang/i18n');
+              setLanguage(value.toLowerCase());
+              dbg(t('settings.language.switched'), value);
+              new Notice(t('settings.language.switched') + ' '  + languageName[value]);
+              this.display(); 
+            } catch (e) {
+              new Notice(t('settings.language.failed'));
+              error(t('settings.language.failed', + ':' + e));
+            }
+          });
+      });
+
   }
 }

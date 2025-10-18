@@ -44,7 +44,30 @@ export default class imageAutoUploadPlugin extends Plugin {
   uploader: LskyProUploader; // 统一的上传器实例
 
   async loadSettings() {
-    this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
+    const loaded = await this.loadData();
+    this.settings = Object.assign({}, DEFAULT_SETTINGS, loaded);
+
+    if (typeof this.settings._debug !== "boolean") {
+      this.settings._debug = false;
+    }
+
+    (window as any).__LSKY_DEBUG__ = this.settings._debug === true;
+
+    if (!Object.getOwnPropertyDescriptor(window, "__LSKY_RUNTIME_DEBUG__")) {
+      Object.defineProperty(window, "__LSKY_RUNTIME_DEBUG__", {
+        configurable: true,
+        get() {
+          return (window as any).__LSKY_DEBUG__;
+        },
+        set(value: boolean) {
+          (window as any).__LSKY_DEBUG__ = !!value;
+        },
+      });
+    }
+
+    if ((window as any).__LSKY_DEBUG__) {
+      console.log("[LskyPro DEBUG]"+ t("main.debugEnabled"));
+    }
   }
 
   async saveSettings() {
@@ -66,25 +89,32 @@ export default class imageAutoUploadPlugin extends Plugin {
 
   async onload() {
     await this.loadSettings();
-    setLanguage(this.settings.language);
-    (window as any).__LSKY_DEBUG__ = this.settings._debug === true;
+
+    try {
+      setLanguage(this.settings.language);
+      dbg(t("main.languageSet"), this.settings.language);
+    } catch (err) {
+      error(t("main.languageInitFailed"), err);
+    }
 
     this.helper = new Helper(this.app);
     this.reinitUploader();
+    dbg(t("main.uploaderInit"));
 
     addIcon(
       'upload',
-      `<svg t="1636630783429" class="icon" viewBox="0 0 100 100" version="1.1" p-id="4649" xmlns="http://www.w3.org/2000/svg">
-      <path d="M 71.638 35.336 L 79.408 35.336 C 83.7 35.336 87.178 38.662 87.178 42.765 L 87.178 84.864 C 87.178 88.969 83.7 92.295 79.408 92.295 L 17.249 92.295 C 12.957 92.295 9.479 88.969 9.479 84.864 L 9.479 42.765 C 9.479 38.662 12.957 35.336 17.249 35.336 L 25.019 35.336 L 25.019 42.765 L 17.249 42.765 L 17.249 84.864 L 79.408 84.864 L 79.408 42.765 L 71.638 42.765 L 71.638 35.336 Z M 49.014 10.179 L 67.326 27.688 L 61.835 32.942 L 52.849 24.352 L 52.849 59.731 L 45.078 59.731 L 45.078 24.455 L 36.194 32.947 L 30.702 27.692 L 49.012 10.181 Z" p-id="4650" fill="#8a8a8a"></path>
-    </svg>`
+      `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+        <path d="M71.638 35.336h7.77c4.292 0 7.77 3.326 7.77 7.429v42.099c0 4.105-3.478 7.431-7.77 7.431H17.249c-4.292 0-7.77-3.326-7.77-7.431V42.765c0-4.103 3.478-7.429 7.77-7.429h7.77v7.429h-7.77v42.099h62.159V42.765h-7.77v-7.429zm-22.624-25.157l18.312 17.509-5.491 5.254-8.986-8.59v35.379h-7.771V24.455l-8.884 8.492-5.492-5.255 18.31-17.511z" fill="#8a8a8a"></path>
+      </svg>`
     );
 
     this.addSettingTab(new SettingTab(this.app, this));
-    
     this.registerCommands();
     this.registerMenus();
     this.registerPasteHandler();
     this.registerMobileAutoUpload();
+
+    dbg(t("main.pluginLoaded"));
   }
 
   // 注册全局命令

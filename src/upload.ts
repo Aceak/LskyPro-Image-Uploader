@@ -5,6 +5,7 @@
 import { App, TFile, normalizePath, Notice } from "obsidian";
 import { PluginSettings } from "./setting";
 import { t } from "./lang/i18n";
+import { dbg } from "./utils";
 
 
 /**
@@ -122,6 +123,7 @@ export class LskyProUploader {
    * @param settings 新的设置对象
    */
   updateSettings(settings: PluginSettings) {
+    dbg(t("main.updateSettings"))
     this.settings = settings;
     this.initializeConfig();
   }
@@ -159,6 +161,7 @@ export class LskyProUploader {
    * @returns 封装后的上传结果
    */
 private async uploadRawFile(file: File): Promise<UploadResult> {
+  dbg(t("main.uploadRawFile"))
   try {
     // 获取请求选项
     const requestOptions = this.getRequestOptions(file);
@@ -223,6 +226,7 @@ private async uploadRawFile(file: File): Promise<UploadResult> {
    * @returns 上传结果
    */
   async uploadSingleFile(fileOrPath: File | string): Promise<UploadResult> {
+    dbg(t("main.uploadSingleFile"))
     try {
       // 判断输入类型，如果是字符串则转换为File对象
       const file = typeof fileOrPath === 'string'
@@ -243,6 +247,7 @@ private async uploadRawFile(file: File): Promise<UploadResult> {
    * @returns 批量上传结果，成功时包含所有上传成功的URL数组
    */
   async uploadFiles(inputs: Array<File | string>): Promise<UploadResult> {
+    dbg(t("main.uploadFiles"))
     try {
       // 将所有输入转换为File对象
       const files = await Promise.all(
@@ -276,6 +281,7 @@ private async uploadRawFile(file: File): Promise<UploadResult> {
     inputs: Array<File | string>,
     concurrency: number = 3
   ): Promise<UploadResult> {
+    dbg(t("main.uploadWithLimit"))
     const results: UploadResult[] = [];
     const total = inputs.length;
     let current = 0;
@@ -341,6 +347,7 @@ private async uploadRawFile(file: File): Promise<UploadResult> {
    * @returns 上传结果对象，成功时包含图片URL
    */
   async uploadFromClipboard(evt: ClipboardEvent): Promise<UploadResult> {
+    dbg(t("main.uploadFromClipboard"))
     try {
       const file = evt.clipboardData?.files?.[0];
       if (!file) throw new Error(t("upload.clipboardEmpty"));

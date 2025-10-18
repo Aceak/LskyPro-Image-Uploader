@@ -22,6 +22,18 @@ export default {
   "main.pasteNetworkImages": "Detected {{count}} network image(s), start uploading",
   "main.autoUploadClipboardDisabled": "Auto upload clipboard is disabled",
   "main.autoUploadAttachmentsDisabled": "Auto upload attachments is disabled",
+  "main.debugMode": "Debug mode is enabled",
+  "main.updateSettings": "Update settings",
+  "main.uploadRawFile": "Upload raw file",
+  "main.uploadSingleFile": "Upload single file",
+  "main.uploadFiles": "Upload files",
+  "main.uploadWithLimit": "Upload with limit",
+  "main.uploadFromClipboard": "Upload from clipboard",
+  "main.languageSet": "Language set to:",
+  "main.languageInitFailed": "Language initialization failed:",
+  "main.uploaderInit": "Uploader initialized",
+  "main.pluginLoaded": "Plugin loaded successfully",
+  "main.debugEnabled": "Debug mode enabled",
 
   /* ===============================
    * DOWNLOAD PROCESS

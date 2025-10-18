@@ -21,6 +21,18 @@ export default {
   "main.pasteNetworkImages": "偵測到 {{count}} 張網絡圖片，開始上傳",
   "main.autoUploadClipboardDisabled": "自動上傳剪貼簿已停用",
   "main.autoUploadAttachmentsDisabled": "自動上傳附件已停用",
+  "main.debugMode": "除錯模式已啟用",
+  "main.updateSettings": "更新設置",
+  "main.uploadRawFile": "上傳原始文件",
+  "main.uploadSingleFile": "上傳單文件",
+  "main.uploadFiles": "上傳多文件",
+  "main.uploadWithLimit": "上傳帶并发限制",
+  "main.uploadFromClipboard": "從剪貼簿上傳",
+  "main.languageSet": "語言設置為:",
+  "main.languageInitFailed": "語言初始化失敗:",
+  "main.uploaderInit": "上傳器初始化完成",
+  "main.pluginLoaded": "插件加載成功",
+  "main.debugEnabled": "除錯模式已啟用",
 
   /* ===============================
    * 下載流程

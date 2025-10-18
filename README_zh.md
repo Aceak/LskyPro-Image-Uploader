@@ -68,18 +68,18 @@
 直接在编辑器中粘贴图片，插件会：
 1. 自动上传至 LskyPro；
 2. 上传成功后替换为 Markdown 外链：
-   ```markdown
-   ![image](https://img.example.com/uploads/2025/xx.png)
-   ```
+```markdown
+![image](https://img.example.com/uploads/2025/xx.png)
+```
 ---
 
 ### 移动端附件自动上传
 点击插入附件按钮并选中图片文件后，插件会：
 1. 自动上传至 LskyPro；
 2. 上传成功后替换为 Markdown 外链：
-   ```markdown
-   ![image](https://img.example.com/uploads/2025/xx.png)
-   ```
+```markdown
+![image](https://img.example.com/uploads/2025/xx.png)
+```
 注： 此功能未在移动端测试，可能存在兼容性问题，等后续插件上线了，再进行测试和优化。
 
 ---
@@ -117,21 +117,21 @@
 ### 启用调试模式
 #### 方式一：通过配置文件启用（推荐）
 1. 打开插件数据目录：  
-   ```
-   .obsidian/plugins/lskypro-upload-v2/data.json
-   ```
+```
+.obsidian/plugins/lskypro-upload-v2/data.json
+```
 2. 在文件中添加或修改以下字段：  
-   ```json
-   "_debug": true
-   ```
+```json
+"_debug": true
+```
 3. 保存文件后，重新加载插件或重启 Obsidian ，即可开启调试模式。
 
 #### 方式二：临时启用（不修改文件）
 1. 打开控制台（`Ctrl + Shift + I` → Console）；  
 2. 输入以下命令：  
-   ```js
-   window.__LSKY_RUNTIME_DEBUG__ = true
-   ```
+```js
+window.__LSKY_RUNTIME_DEBUG__ = true
+```
 3. 重新加载插件后即自动进入调试模式。
 ---
 

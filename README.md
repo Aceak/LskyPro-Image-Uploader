@@ -67,9 +67,9 @@ Before using this plugin, make sure you have:
 When you paste an image into the editor, the plugin will:
 1. Automatically upload it to your LskyPro server;  
 2. Replace it with a Markdown image link, for example:
-   ```markdown
-   ![image](https://img.example.com/uploads/2025/xx.png)
-   ```
+```markdown
+![image](https://img.example.com/uploads/2025/xx.png)
+```
 
 ---
 
@@ -77,10 +77,10 @@ When you paste an image into the editor, the plugin will:
 When you click the attachment button and select an image file, the plugin will:
 1. Automatically upload it to your LskyPro server;  
 2. Replace it with a Markdown image link:
-   ```markdown
-   ![image](https://img.example.com/uploads/2025/xx.png)
-   ```
-   Note: This feature hasn't been thoroughly tested on mobile devices and may have compatibility issues. Further testing and optimization will be conducted after the plugin is published.
+```markdown
+![image](https://img.example.com/uploads/2025/xx.png)
+```
+Note: This feature hasn't been thoroughly tested on mobile devices and may have compatibility issues. Further testing and optimization will be conducted after the plugin is published.
 
 ---
 
@@ -116,21 +116,21 @@ Command: `Download all images`.
 ### Enable Debug Mode
 #### Method 1: Enable via configuration file (Recommended)
 1. Open the plugin data directory:  
-   ```
-   .obsidian/plugins/lskypro-upload-v2/data.json
-   ```
+```
+.obsidian/plugins/lskypro-upload-v2/data.json
+```
 2. Add or modify the following field:  
-   ```json
-   "_debug": true
-   ```
+```json
+"_debug": true
+ ```
 3. Save the file and reload the plugin or restart Obsidian to enable debug mode.
 
 #### Method 2: Temporarily enable (without modifying files)
 1. Open the console (`Ctrl + Shift + I` → Console);  
 2. Enter the following command:  
-   ```js
-   window.__LSKY_RUNTIME_DEBUG__ = true
-   ```
+```js
+window.__LSKY_RUNTIME_DEBUG__ = true
+```
 3. Reload the plugin to automatically enter debug mode.
 
 ---

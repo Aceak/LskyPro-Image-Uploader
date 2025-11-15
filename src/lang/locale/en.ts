@@ -141,5 +141,19 @@ export default {
   "settings.language": "Language",
   "settings.language.desc": "Select the plugin language. 'Auto' follows Obsidian's interface language.",
   "settings.language.switched": "Language switched to",
-  "settings.language.failed": "Language switch failed"
+  "settings.language.failed": "Language switch failed",
+
+  // Setting labels
+  "setting.updateConfig": "Update config: ",
+  "setting.uploadByClipSwitch": "Auto upload from clipboard",
+  "setting.uploadAttachmentsSwitch": "Auto upload attachments",
+  "setting.uploader": "API version",
+  "setting.token": "API token",
+  "setting.storage_id": "Storage ID",
+  "setting.strategy_id": "Strategy ID",
+  "setting.uploadServer": "Upload Server",
+  "setting.workOnNetWork": "Work on network images",
+  "setting.newWorkBlackDomains": "Network domain blacklist",
+  "setting.deleteSource": "Delete source file after upload",
+  "setting.concurrencyMode": "Upload concurrency",
 };

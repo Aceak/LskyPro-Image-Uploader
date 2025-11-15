@@ -1,6 +1,5 @@
 // helper.ts
 import { MarkdownView, App } from "obsidian";
-import { getExt, getFileName, getDir, getNameWithoutExt } from "./utils";
 
 /**
  * 图片信息接口

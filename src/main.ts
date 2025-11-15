@@ -89,12 +89,9 @@ export default class imageAutoUploadPlugin extends Plugin {
   }
 
   reinitUploader() {
-    // 如果上传器已存在，直接更新设置而不是创建新实例
-    if (this.uploader) {
-      this.uploader.updateSettings(this.settings);
-    } else {
-      // 如果上传器不存在，创建新实例
-      const version = this.settings.uploader === 'LskyPro-V1' ? 'v1' : 'v2';
+    const version = this.settings.uploader === "LskyPro-V1" ? "v1" : "v2";
+
+    if (!this.uploader) {
       this.uploader = new LskyProUploader(this.settings, this.app, version);
     }
   }
@@ -715,7 +712,7 @@ export default class imageAutoUploadPlugin extends Plugin {
 
   // 检查是否可以上传图片
   canUpload(clipboardData: DataTransfer) {
-    if (!this.settings.applyImage) return false;
+    if (!this.settings.uploadByClipSwitch) return false;
 
     const files = clipboardData.files;
     const text = clipboardData.getData('text');
@@ -725,7 +722,7 @@ export default class imageAutoUploadPlugin extends Plugin {
 
     if (!isImage) return false;
 
-    return text ? this.settings.applyImage : true;
+    return text ? this.settings.uploadByClipSwitch : true;
   }
 
   // 上传文件并嵌入 Imgur 图片

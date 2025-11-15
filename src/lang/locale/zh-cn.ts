@@ -140,5 +140,19 @@ export default {
   "settings.language": "语言",
   "settings.language.desc": "选择插件语言。“自动”将跟随 Obsidian 的界面语言。",
   "settings.language.switched": "语言已切换为",
-  "settings.language.failed": "语言切换失败"
+  "settings.language.failed": "语言切换失败",
+
+  // 设置标签
+  "setting.updateConfig": "更新配置:",
+  "setting.uploadByClipSwitch": "自动上传剪贴板图片",
+  "setting.uploadAttachmentsSwitch": "自动上传附件",
+  "setting.uploader": "API版本",
+  "setting.token": "API密钥",
+  "setting.storage_id": "存储 ID",
+  "setting.strategy_id": "策略 ID",
+  "setting.uploadServer": "上传服务器",
+  "setting.workOnNetWork": "处理网络图片",
+  "setting.newWorkBlackDomains": "网络域名黑名单",
+  "setting.deleteSource": "上传成功后删除源文件",
+  "setting.concurrencyMode": "上传并发",
 };

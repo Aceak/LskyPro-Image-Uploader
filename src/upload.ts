@@ -3,9 +3,9 @@
  * 实现与LskyPro服务器的交互，支持V1和V2两个版本的API
  */
 import { App, TFile, normalizePath, Notice, requestUrl } from "obsidian";
-import { PluginSettings } from "./setting";
+import { PluginSettings, getSettingLabel } from "./setting";
 import { t } from "./lang/i18n";
-import { dbg } from "./utils";
+import { dbg, getMimeTypeFromExt } from "./utils";
 
 
 /**
@@ -111,13 +111,20 @@ export class LskyProUploader {
     this.lskyToken = "Bearer " + this.settings.token;
   }
 
+
+
   /**
    * 更新配置并重新初始化
    * @param settings 新的设置对象
    */
-  updateSettings(settings: PluginSettings) {
-    dbg(t("main.updateSettings"))
-    this.settings = settings;
+  updateSetting<K extends keyof PluginSettings>(key: K, value: PluginSettings[K]) {
+    this.settings[key] = value;
+
+    const label = getSettingLabel(key) ?? key;
+
+    dbg(t("setting.updateConfig") + `${label} = ${value}`);
+
+    // 仅在需要时重新初始化配置
     this.initializeConfig();
   }
 
@@ -233,10 +240,16 @@ export class LskyProUploader {
 
     // 读取文件二进制内容
     const data = await this.app.vault.readBinary(abstractFile);
+
+    const fileExt = abstractFile.extension;
+    const mime = getMimeTypeFromExt(fileExt);
     
     // 创建 Blob 和 File 对象
-    const file = new File([new Blob([data], { type: 'image/${fileExt}' })], abstractFile.name);
-    return file;
+    return new File(
+      [new Blob([data], { type: mime })],
+      abstractFile.name,
+      { type: mime },
+    )
   }
 
   /**

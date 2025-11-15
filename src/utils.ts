@@ -27,6 +27,44 @@ export const IMAGE_EXT_LIST = [
   ".heic", ".heif",
 ];
 
+export const IMAGE_MIME_MAP: Record<string, string> = {
+  // 常规格式
+  "jpg": "image/jpeg",
+  "jpeg": "image/jpeg",
+  "png": "image/png",
+  "gif": "image/gif",
+  "bmp": "image/bmp",
+  "webp": "image/webp",
+  "avif": "image/avif",
+  "tif": "image/tiff",
+  "tiff": "image/tiff",
+
+  // JPEG 2000 系列（JP2 家族）
+  "jp2": "image/jp2",
+  "j2k": "image/j2k",
+  "jpc": "image/jpc",
+  "jpf": "image/jpf",
+  "jpx": "image/jpx",
+  "jp2k": "image/jp2",
+  "jpg2": "image/jp2",
+  "jpm": "image/jpm",
+  "j2c": "image/j2c",
+
+  // HEIC / HEIF 系列
+  "heic": "image/heic",
+  "heif": "image/heif",
+};
+
+/**
+ * 根据文件扩展名获取对应的 MIME 类型
+ * @param ext 文件扩展名（可带点，也可不带点）
+ * @returns 对应的 MIME 类型字符串，若不支持则返回 "application/octet-stream"
+ */
+export function getMimeTypeFromExt(ext: string): string {
+  const clean = ext.replace(/^\./, "").toLowerCase();
+  return IMAGE_MIME_MAP[clean] || "application/octet-stream";
+}
+
 /**
  * 检查给定文件扩展名是否为合法图片类型
  * @param ext 文件扩展名（可带点，也可不带点）
@@ -207,30 +245,24 @@ export function error(...args: unknown[]): void {
   }
 }
 
-// 获取文件扩展名（替代 path.extname）
-export function getExt(path: string): string {
-  const i = path.lastIndexOf(".");
-  return i >= 0 ? path.slice(i) : "";
-}
+// // 获取文件名（替代 path.basename）
+// export function getFileName(path: string): string {
+//   const parts = path.split(/[\\/]/);
+//   return parts[parts.length - 1];
+// }
 
-// 获取文件名（替代 path.basename）
-export function getFileName(path: string): string {
-  const parts = path.split(/[\\/]/);
-  return parts[parts.length - 1];
-}
+// // 获取文件所在目录（替代 path.dirname）
+// export function getDir(path: string): string {
+//   const idx = path.lastIndexOf("/");
+//   return idx >= 0 ? path.slice(0, idx) : "";
+// }
 
-// 获取文件所在目录（替代 path.dirname）
-export function getDir(path: string): string {
-  const idx = path.lastIndexOf("/");
-  return idx >= 0 ? path.slice(0, idx) : "";
-}
-
-// 获取文件名（不包含扩展名）
-export function getNameWithoutExt(path: string): string {
-  const file = getFileName(path);
-  const idx = file.lastIndexOf(".");
-  return idx >= 0 ? file.slice(0, idx) : file;
-}
+// // 获取文件名（不包含扩展名）
+// export function getNameWithoutExt(path: string): string {
+//   const file = getFileName(path);
+//   const idx = file.lastIndexOf(".");
+//   return idx >= 0 ? file.slice(0, idx) : file;
+// }
 
 // 获取平台环境
 export function getPlatformEnv(app: App) {

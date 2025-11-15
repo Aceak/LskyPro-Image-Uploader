@@ -22,8 +22,6 @@ export interface PluginSettings {
   uploader: string;               // 上传器类型（V1或V2）
   workOnNetWork: boolean;         // 是否处理网络图片
   newWorkBlackDomains: string;    // 网络黑名单域名
-  fixPath: boolean;               // 修复路径
-  applyImage: boolean;            // 应用图片处理
   deleteSource: boolean;          // 上传后删除源文件
   concurrencyMode: ConcurrencyLevel;        // 并发模式（1、3、5）
   language: string;               // 语言设置（Auto、zh-cn、en）
@@ -44,13 +42,28 @@ export const DEFAULT_SETTINGS: PluginSettings = {
   strategy_id: "",               // 默认空策略ID
   uploadServer: "https://lsky.xxxx", // 默认服务器地址示例
   workOnNetWork: false,           // 默认不处理网络图片
-  fixPath: false,                 // 默认不修复路径
-  applyImage: true,               // 默认应用图片处理
   newWorkBlackDomains: "",        // 默认无黑名单域名
   deleteSource: false,            // 默认不删除源文件
   concurrencyMode: "medium",      // 默认中等并发模式
   language: "auto",               // 默认自动语言
 }
+
+export const getSettingLabel = (key: keyof PluginSettings): string => {
+  const map: Partial<Record<keyof PluginSettings, string>> = {
+    uploader: t("setting.uploader"),
+    uploadServer: t("setting.uploadServer"),
+    token: t("setting.token"),
+    storage_id: t("setting.storage_id"),
+    strategy_id: t("setting.strategy_id"),
+    uploadAttachmentsSwitch: t("setting.uploadAttachmentsSwitch"),
+    uploadByClipSwitch: t("setting.uploadByClipSwitch"),
+    newWorkBlackDomains: t("setting.newWorkBlackDomains"),
+    deleteSource: t("setting.deleteSource"),
+    concurrencyMode: t("setting.concurrencyMode"),
+    workOnNetWork: t("setting.workOnNetWork"),
+  };
+  return map[key];
+};
 
 export type ConcurrencyLevel = "low" | "medium" | "high";
 
@@ -105,6 +118,8 @@ export class SettingTab extends PluginSettingTab {
           .onChange(async value => {
             this.plugin.settings.uploadByClipSwitch = value;
             await this.plugin.saveSettings();
+            // 重新初始化上传器以应用新设置
+            this.plugin.uploader?.updateSetting("uploadByClipSwitch", value);
           })
       );
 
@@ -117,6 +132,8 @@ export class SettingTab extends PluginSettingTab {
           .onChange(async value => {
             this.plugin.settings.uploadAttachmentsSwitch = value;
             await this.plugin.saveSettings();
+            // 重新初始化上传器以应用新设置
+            this.plugin.uploader?.updateSetting("uploadAttachmentsSwitch", value);
           })
       );
     
@@ -133,7 +150,7 @@ export class SettingTab extends PluginSettingTab {
               this.display();
               await this.plugin.saveSettings();
               // 重新初始化上传器以应用新版本
-              this.plugin.reinitUploader();
+              this.plugin.uploader?.updateSetting("uploader", value);
             })
         );
 
@@ -149,7 +166,7 @@ export class SettingTab extends PluginSettingTab {
             this.plugin.settings.uploadServer = key;
             await this.plugin.saveSettings();
             // 重新初始化上传器以应用新域名
-            this.plugin.reinitUploader();
+            this.plugin.uploader?.updateSetting("uploadServer", key);
           })
       );
       new Setting(containerEl)
@@ -163,7 +180,7 @@ export class SettingTab extends PluginSettingTab {
             this.plugin.settings.token = key;
             await this.plugin.saveSettings();
             // 重新初始化上传器以应用新Token
-            this.plugin.reinitUploader();
+            this.plugin.uploader?.updateSetting("token", key);
           })
       );
       
@@ -180,7 +197,7 @@ export class SettingTab extends PluginSettingTab {
             this.plugin.settings.storage_id = key;
             await this.plugin.saveSettings();
             // 重新初始化上传器以应用新存储ID
-            this.plugin.reinitUploader();
+            this.plugin.uploader?.updateSetting("storage_id", key);
           })
       );
     } else if (this.plugin.settings.uploader === 'LskyPro-V1') {
@@ -195,7 +212,7 @@ export class SettingTab extends PluginSettingTab {
             this.plugin.settings.strategy_id = key;
             await this.plugin.saveSettings();
             // 重新初始化上传器以应用新策略ID
-            this.plugin.reinitUploader();
+            this.plugin.uploader?.updateSetting("strategy_id", key);
           })
       );
     }
@@ -212,6 +229,8 @@ export class SettingTab extends PluginSettingTab {
             this.plugin.settings.workOnNetWork = value;
             this.display();
             await this.plugin.saveSettings();
+            // 重新初始化上传器以应用新设置
+            this.plugin.uploader?.updateSetting("workOnNetWork", value);
           })
       );
 
@@ -224,19 +243,8 @@ export class SettingTab extends PluginSettingTab {
           .onChange(async value => {
             this.plugin.settings.newWorkBlackDomains = value;
             await this.plugin.saveSettings();
-          })
-      );
-
-    new Setting(containerEl)
-      .setName(t('settings.clipboardMixed'))
-      .setDesc(t('settings.clipboardMixed.desc'))
-      .addToggle(toggle =>
-        toggle
-          .setValue(this.plugin.settings.applyImage)
-          .onChange(async value => {
-            this.plugin.settings.applyImage = value;
-            this.display();
-            await this.plugin.saveSettings();
+            // 重新初始化上传器以应用新黑名单
+            this.plugin.uploader?.updateSetting("newWorkBlackDomains", value);
           })
       );
 
@@ -250,6 +258,8 @@ export class SettingTab extends PluginSettingTab {
             this.plugin.settings.deleteSource = value;
             this.display();
             await this.plugin.saveSettings();
+            // 重新初始化上传器以应用新设置
+            this.plugin.uploader?.updateSetting("deleteSource", value);
           })
       );
 
@@ -270,6 +280,8 @@ export class SettingTab extends PluginSettingTab {
             const message = `${t('settings.concurrency.switched')} ${modeLabel}`;
 
             new Notice(message);
+            // 重新初始化上传器以应用新并发模式
+            this.plugin.uploader?.updateSetting("concurrencyMode", value);
           });
       });
 

@@ -36,7 +36,7 @@ export const DEFAULT_SETTINGS: PluginSettings = {
   _debug: false,                  // 默认禁用调试模式
   uploadByClipSwitch: true,       // 默认启用剪贴板自动上传
   uploadAttachmentsSwitch: true,  // 默认启用附件自动上传
-  uploader: "LskyPro-V2",         // 默认使用V2版本上传器
+  uploader: "LskyPro-v2",         // 默认使用V2版本上传器
   token: "",                     // 默认空令牌
   storage_id:"",                 // 默认空存储ID
   strategy_id: "",               // 默认空策略ID
@@ -142,8 +142,8 @@ export class SettingTab extends PluginSettingTab {
       .setDesc(t('settings.defaultUploader.desc'))
       .addDropdown(cb =>
           cb
-            .addOption('LskyPro-V2', 'LskyPro v2')
-            .addOption('LskyPro-V1', 'LskyPro v1')
+            .addOption('LskyPro-v2', 'LskyPro v2')
+            .addOption('LskyPro-v1', 'LskyPro v1')
             .setValue(this.plugin.settings.uploader)
             .onChange(async value => {
               this.plugin.settings.uploader = value;

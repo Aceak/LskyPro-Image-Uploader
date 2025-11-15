@@ -343,22 +343,20 @@ export class LskyProUploader {
       }
     };
 
-    const running: Promise<void>[] = [];
-
+    const running = new Set<Promise<void>>();
+    
     for (const item of inputs) {
       const task = queue(item).finally(() => {
-        const idx = running.indexOf(task);
-        if (idx !== -1) running.splice(idx, 1);
+        running.delete(task);
       });
 
-      running.push(task);
+      running.add(task);
 
       // 并发控制
-      if (running.length >= concurrency) {
+      if (running.size >= concurrency) {
         await Promise.race(running);
       }
     }
-
     await Promise.all(running);
 
     // 汇总结果
@@ -415,7 +413,7 @@ export async function buildMultipartBody(formData: FormData) {
   const encoder = new TextEncoder();
 
   const iterable = formData as unknown as {
-    entries(): IterableIterator<[string, any]>;
+    entries(): IterableIterator<[string, FormDataEntryValue]>;
   };
 
   // 遍历 FormData

@@ -22,7 +22,7 @@ const REGEX_FILE = /!\[([^\]]*)\]\(([^)]+)\)/g;
  * 正则表达式 - 匹配 Obsidian Wiki 风格的图片链接
  * 格式：![[image path|optional alias]]
  */
-const REGEX_WIKI_FILE = /\!\[\[(.*?)(\s\|.*?)?\]\]/g;
+const REGEX_WIKI_FILE = /!\?\[\[(.*?)(\s\|.*?)?\]\]/g;
 
 /**
  * Helper 类 - 提供各种辅助方法
@@ -45,19 +45,16 @@ export default class Helper {
    * @param defaultValue 默认值，当键不存在时返回
    * @returns 元数据值或默认值
    */
-  getFrontmatterValue(key: string, defaultValue: any = undefined) {
+  getFrontmatterValue<T = unknown>(key: string, defaultValue?: T): T | undefined {
     const file = this.app.workspace.getActiveFile();
-    if (!file) {
-      return undefined;
-    }
-    const path = file.path;
-    const cache = this.app.metadataCache.getCache(path);
+    if (!file) return undefined;
 
-    let value = defaultValue;
-    if (cache?.frontmatter && cache.frontmatter.hasOwnProperty(key)) {
-      value = cache.frontmatter[key];
+    const cache = this.app.metadataCache.getCache(file.path);
+    if (cache?.frontmatter && key in cache.frontmatter) {
+      return cache.frontmatter[key] as T;
     }
-    return value;
+
+    return defaultValue;
   }
 
   /**
@@ -174,8 +171,7 @@ export default class Helper {
 
       // 检查域名是否包含黑名单中的任何一个域名
       return blackDomainList.some(blackDomain => domain.includes(blackDomain));
-    } catch (error) {
-      // 如果 URL 解析失败，返回 false
+    } catch {
       return false;
     }
   }

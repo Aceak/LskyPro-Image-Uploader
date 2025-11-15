@@ -1,58 +1,16 @@
 // i18n.ts
 import { moment } from "obsidian";
-import { dbg, warn, error } from "../utils";
+import { dbg, warn} from "../utils";
 
-import ar from "./locale/ar";
-import cz from "./locale/cz";
-import da from "./locale/da";
-import de from "./locale/de";
 import en from "./locale/en";
-import enGB from "./locale/en-gb";
-import es from "./locale/es";
-import fr from "./locale/fr";
-import hi from "./locale/hi";
-import id from "./locale/id";
-import it from "./locale/it";
-import ja from "./locale/ja";
-import ko from "./locale/ko";
-import nl from "./locale/nl";
-import no from "./locale/no";
-import pl from "./locale/pl";
-import pt from "./locale/pt";
-import ptBR from "./locale/pt-br";
-import ro from "./locale/ro";
-import ru from "./locale/ru";
-import tr from "./locale/tr";
 import zhCN from "./locale/zh-cn";
 import zhTW from "./locale/zh-tw";
 
-const localeMap: Record<string, any> = {
-  ar,
-  cs: cz,
-  da,
-  de,
+const localeMap = {
   en,
-  "en-gb": enGB,
-  es,
-  fr,
-  hi,
-  id,
-  it,
-  ja,
-  ko,
-  nl,
-  nn: no,
-  pl,
-  pt,
-  "pt-br": ptBR,
-  ro,
-  ru,
-  tr,
   "zh-cn": zhCN,
   "zh-tw": zhTW,
-  "zh-hk": zhTW,
-  "zh-mo": zhTW,
-};
+} as const;
 
 export const languageName: Record<string, string> = {
   auto: "Auto",
@@ -64,17 +22,34 @@ export const languageName: Record<string, string> = {
 export type TranslationDict = typeof en;
 export type TranslationKeys = keyof TranslationDict;
 
+type LocaleKey = keyof typeof localeMap;
+
 function normalizeLocale(code: string): string {
   const lower = (code || "en").toLowerCase();
   if (lower === "zh" || lower.startsWith("zh-cn")) return "zh-cn";
   if (lower.startsWith("zh-tw") || lower.startsWith("zh-hk") || lower.startsWith("zh-mo")) return "zh-tw";
   if (lower.startsWith("en-")) return "en";
-  if (lower.startsWith("pt-br")) return "pt-br";
   return lower.split("-")[0];
 }
 
-let currentLocale = normalizeLocale(moment.locale());
-let locale = localeMap[currentLocale];
+function isLocaleKey(v: string): v is LocaleKey {
+  return v in localeMap;
+}
+
+function getLocale(code: string) {
+  const norm = normalizeLocale(code);
+  if (isLocaleKey(norm)) {
+    return { key: norm, dict: localeMap[norm] as TranslationDict };
+  }
+  warn(`[i18n] Missing or empty locale "${norm}", fallback to English.`);
+  return { key: "en" as LocaleKey, dict: en as TranslationDict };
+}
+
+
+const init = getLocale(moment.locale());
+let currentLocale: LocaleKey = init.key;
+let locale: TranslationDict = init.dict;
+
 if (!locale || Object.keys(locale).length === 0) {
   warn(`[i18n] Missing or empty locale "${currentLocale}", fallback to English.`);
   locale = en;
@@ -86,21 +61,18 @@ export function getLanguage(): string {
 }
 
 export function setLanguage(lang: string): void {
+  let target = lang;
   if (lang === "auto" || lang === "Auto") {
-    currentLocale = normalizeLocale(moment.locale());
-    dbg("[i18n] Auto mode -> system locale:", currentLocale);
+    target = moment.locale();
+    dbg("[i18n] Auto mode -> system locale:", normalizeLocale(target));
   } else {
-    currentLocale = normalizeLocale(lang);
-    dbg("[i18n] Switched to language:", currentLocale);
+    dbg("[i18n] Switched to language:", normalizeLocale(lang));
   }
 
-  locale = localeMap[currentLocale];
-  if (!locale || Object.keys(locale).length === 0) {
-    warn(`[i18n] Missing or empty locale "${currentLocale}", fallback to English.`);
-    locale = en;
-  } else {
-    dbg("[i18n] Active locale:", currentLocale);
-  }
+  const next = getLocale(target);
+  currentLocale = next.key;
+  locale = next.dict;
+  dbg("[i18n] Active locale:", currentLocale);
 }
 
 function getValue(obj: unknown, path: string): string | undefined {

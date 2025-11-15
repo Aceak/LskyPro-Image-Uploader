@@ -156,7 +156,7 @@ export function getLastImage(list: string[]) {
 export function arrayToObject<T, K extends keyof T>(
   arr: T[],
   key: K
-): Record<T[K] & string, T> {
+): Record<string, T> {
   const obj: Record<string, T> = {};
 
   for (const item of arr) {
@@ -166,7 +166,7 @@ export function arrayToObject<T, K extends keyof T>(
     }
   }
 
-  return obj as Record<T[K] & string, T>;
+  return obj;
 }
 
 /**

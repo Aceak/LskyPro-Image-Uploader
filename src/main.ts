@@ -390,7 +390,7 @@ export default class imageAutoUploadPlugin extends Plugin {
 
       // 生成安全文件名
       let asset = getUrlAsset(url);
-      asset = decodeURI(asset).replaceAll(/[\\\/:*?"<>|]/g, "-");
+      asset = decodeURI(asset).replaceAll(/[\\/:*?"<>|]/g, "-");
 
       // 如果文件已存在，则加随机前缀
       const saveName = this.app.vault.getAbstractFileByPath(`${folderPathAbs}/${asset}`)
@@ -485,7 +485,7 @@ export default class imageAutoUploadPlugin extends Plugin {
       }
 
       // 文件名清理
-      const safeName = decodeURI(filename).replace(/[\\\/:*?"<>|]/g, "-");
+      const safeName = decodeURI(filename).replace(/[\\/:*?"<>|]/g, "-");
       const savePath = `${folderPath}/${safeName}.${ext}`;
 
       // 写入 vault
@@ -539,7 +539,7 @@ export default class imageAutoUploadPlugin extends Plugin {
 
   // 获取文件对象
   getFile(fileName: string, fileMap?: Record<string, TFile>) {
-    const map = fileMap ?? arrayToObject(this.app.vault.getFiles(), "name") as Record<string, TFile>;
+    const map = fileMap ?? arrayToObject(this.app.vault.getFiles(), "name");
     return map[fileName];
   }
 
@@ -735,8 +735,6 @@ export default class imageAutoUploadPlugin extends Plugin {
 
     this.insertTemporaryText(editor, pasteId);
 
-    const name = clipboardData.files[0].name;
-
     try {
       const url = await callback(editor, pasteId);
       this.embedMarkDownImage(editor, pasteId, url);
@@ -780,7 +778,11 @@ export default class imageAutoUploadPlugin extends Plugin {
     } else if (typeof reason === 'string') {
       msg = reason;
     } else {
-      msg = String(reason ?? 'Unknown Error');
+      try {
+        msg = JSON.stringify(reason);
+      } catch {
+        msg = 'Unknown error';
+      }
     }
 
     new Notice(msg);

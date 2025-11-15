@@ -139,7 +139,7 @@ export default {
 
   // Language
   "settings.language": "Language",
-  "settings.language.desc": "Select the plugin language. 'Auto' follows Obsidian's interface language.",
+  "settings.language.desc": "Select the plugin language.",
   "settings.language.switched": "Language switched to",
   "settings.language.failed": "Language switch failed",
 

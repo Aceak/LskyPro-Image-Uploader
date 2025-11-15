@@ -114,6 +114,7 @@ Command: `Download all images`.
 ---
 
 ### Enable Debug Mode
+Need to set the developer mode output mode to `Detailed` first, then you can enable debug info.
 #### Method 1: Enable via configuration file (Recommended)
 1. Open the plugin data directory:  
 ```

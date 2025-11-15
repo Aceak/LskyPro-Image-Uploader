@@ -11,7 +11,7 @@ export default {
   "main.unknownUploaderVersion": "Unknown uploader version",
   "main.uploadAllImages": "Upload all images",
   "main.downloadAllImages": "Download all images",
-  "main.uploadImage": "Upload Image",
+  "main.uploadImage": "Upload image",
   "main.fileNotFound": "Could not find image file",
   "main.noAttachmentFolder": "Could not get attachment folder path",
   "main.openFileFirst": "Please open a file first",
@@ -34,6 +34,7 @@ export default {
   "main.uploaderInit": "Uploader initialized",
   "main.pluginLoaded": "Plugin loaded successfully",
   "main.debugEnabled": "Debug mode enabled",
+  "main.notafile": "Resolved path but not a file:",
 
   /* ===============================
    * DOWNLOAD PROCESS
@@ -58,10 +59,10 @@ export default {
   "upload.failed": "Image upload failed",
   "upload.failedNotice": "An error occurred during upload, please check the console log",
   "upload.someFailed": "Some image uploads failed",
-  "upload.error": "Upload Error",
+  "upload.error": "Upload error",
   "upload.uploading": "Uploading file...",
   "upload.progress": "Upload progress",
-  "upload.httpError": "HTTP Error",
+  "upload.httpError": "HTTP error",
   "upload.success": "Upload success",
   "upload.failedShort": "Upload failed",
   "upload.requestException": "Upload request exception",
@@ -90,7 +91,7 @@ export default {
   /* ===============================
    * SETTINGS PANEL
    * =============================== */
-  "settings.title": "Plugin Settings",
+  "settings.title": "Plugin settings",
 
   // General upload behavior
   "settings.autoUploadClipboard": "Auto upload from clipboard",
@@ -100,24 +101,24 @@ export default {
 
   // Uploader configuration
   "settings.defaultUploader": "Default uploader",
-  "settings.defaultUploader.desc": "Select default uploader api (LskyPro v1 / v2)",
+  "settings.defaultUploader.desc": "Select default uploader API (LskyPro v1 / v2)",
   "settings.serverDomain": "LskyPro server domain",
   "settings.serverDomain.desc": "Domain of your LskyPro server (without API path)",
   "settings.serverDomain.placeholder": "https://example.com",
-  "settings.token": "LskyPro Token",
+  "settings.token": "LskyPro token",
   "settings.token.desc": "API token for LskyPro authentication",
   "settings.token.placeholder": "Your API token here",
-  "settings.storageId": "LskyPro Storage ID",
+  "settings.storageId": "LskyPro storage ID",
   "settings.storageId.desc": "Storage ID for LskyPro v2",
   "settings.storageId.placeholder": "Storage ID",
-  "settings.strategyId": "LskyPro Strategy ID (optional)",
+  "settings.strategyId": "LskyPro strategy ID (optional)",
   "settings.strategyId.desc": "Strategy ID for LskyPro v1",
   "settings.strategyId.placeholder": "Strategy ID",
 
   // Network image behavior
   "settings.workOnNetwork": "Work on network images",
   "settings.workOnNetwork.desc": "Process and re-upload images from remote URLs",
-  "settings.blacklist": "Network Domain Black List",
+  "settings.blacklist": "Network domain blacklist",
   "settings.blacklist.desc": "Domains to exclude (comma-separated)",
 
   // Clipboard mixed content
@@ -138,7 +139,7 @@ export default {
 
   // Language
   "settings.language": "Language",
-  "settings.language.desc": "Select plugin language. 'Auto' follows Obsidian's interface language.",
+  "settings.language.desc": "Select the plugin language. 'Auto' follows Obsidian's interface language.",
   "settings.language.switched": "Language switched to",
   "settings.language.failed": "Language switch failed"
 };

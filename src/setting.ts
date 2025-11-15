@@ -4,7 +4,7 @@
  */
 import { App, PluginSettingTab, Setting, Notice } from "obsidian";
 import imageAutoUploadPlugin from "./main";
-import { t, languageName} from "./lang/i18n";
+import { t, languageName, TranslationKeys } from "./lang/i18n";
 import { error, dbg } from "./utils";
 
 /**
@@ -25,9 +25,9 @@ export interface PluginSettings {
   fixPath: boolean;               // 修复路径
   applyImage: boolean;            // 应用图片处理
   deleteSource: boolean;          // 上传后删除源文件
-  concurrencyMode: string;        // 并发模式（1、3、5）
+  concurrencyMode: ConcurrencyLevel;        // 并发模式（1、3、5）
   language: string;               // 语言设置（Auto、zh-cn、en）
-  [propName: string]: any;        // 允许其他动态属性
+  uploadedImages?: string[];
 }
 
 /**
@@ -46,18 +46,24 @@ export const DEFAULT_SETTINGS: PluginSettings = {
   workOnNetWork: false,           // 默认不处理网络图片
   fixPath: false,                 // 默认不修复路径
   applyImage: true,               // 默认应用图片处理
-  newWorkBlackDomains: "",       // 默认无黑名单域名
+  newWorkBlackDomains: "",        // 默认无黑名单域名
   deleteSource: false,            // 默认不删除源文件
-  concurrencyMode: "3",           // 默认中等并发模式
-  language: "Auto",               // 默认自动语言
+  concurrencyMode: "medium",      // 默认中等并发模式
+  language: "auto",               // 默认自动语言
 }
 
-export type ConcurrencyMode = 'low' | 'medium' | 'high';
+export type ConcurrencyLevel = "low" | "medium" | "high";
 
-export const ConcurrencyMap: Record<ConcurrencyMode, number> = {
+export const ConcurrencyMap: Record<ConcurrencyLevel, number> = {
   low: 1,
   medium: 3,
   high: 5,
+};
+
+export const concurrencyKeys: Record<ConcurrencyLevel, TranslationKeys> = {
+  low: "settings.concurrency.low",
+  medium: "settings.concurrency.medium",
+  high: "settings.concurrency.high",
 };
 
 /**
@@ -82,9 +88,12 @@ export class SettingTab extends PluginSettingTab {
    * 创建并渲染所有设置项
    */
   display(): void {
-    let { containerEl } = this;
+    const { containerEl } = this;
     containerEl.empty();
-    containerEl.createEl('h2', { text: t('settings.title') });
+
+    new Setting(containerEl)
+      .setName(t('settings.title'))
+      .setHeading();
     
     // 剪贴板自动上传设置
     new Setting(containerEl)
@@ -116,8 +125,8 @@ export class SettingTab extends PluginSettingTab {
       .setDesc(t('settings.defaultUploader.desc'))
       .addDropdown(cb =>
           cb
-            .addOption('LskyPro-V2', 'LskyPro v2')
-            .addOption('LskyPro-V1', 'LskyPro v1')
+            .addOption('LskyPro-V2', 'LskyPro V2')
+            .addOption('LskyPro-V1', 'LskyPro V1')
             .setValue(this.plugin.settings.uploader)
             .onChange(async value => {
               this.plugin.settings.uploader = value;
@@ -253,12 +262,11 @@ export class SettingTab extends PluginSettingTab {
         cb.addOption('high', t('settings.concurrency.high'));
 
         cb.setValue(this.plugin.settings.concurrencyMode || 'medium')
-          .onChange(async (value) => {
+          .onChange(async (value: ConcurrencyLevel) => {
             this.plugin.settings.concurrencyMode = value;
             await this.plugin.saveSettings();
 
-            // 获取当前选项的 i18n 文本
-            const modeLabel = t(`settings.concurrency.${value}` as any);
+            const modeLabel = t(concurrencyKeys[value]);
             const message = `${t('settings.concurrency.switched')} ${modeLabel}`;
 
             new Notice(message);
@@ -274,7 +282,7 @@ export class SettingTab extends PluginSettingTab {
           .addOption('en', 'English')
           .addOption('zh-cn', '简体中文')
           .addOption('zh-tw', '繁體中文')
-          .setValue(this.plugin.settings.language || 'Auto')
+          .setValue(this.plugin.settings.language)
           .onChange(async (value: string) => {
             this.plugin.settings.language = value;
             await this.plugin.saveSettings();

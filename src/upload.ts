@@ -2,7 +2,7 @@
  * 上传模块
  * 实现与LskyPro服务器的交互，支持V1和V2两个版本的API
  */
-import { App, TFile, normalizePath, Notice } from "obsidian";
+import { App, TFile, normalizePath, Notice, requestUrl } from "obsidian";
 import { PluginSettings } from "./setting";
 import { t } from "./lang/i18n";
 import { dbg } from "./utils";
@@ -39,13 +39,6 @@ interface ParsedResult {
   message: string;      // 消息
   url: string | null;   // 图片URL
 }
-
-type ConcurrencyMode = 'low' | 'medium' | 'high';
-const ConcurrencyMap: Record<ConcurrencyMode, number> = {
-  low: 1,
-  medium: 3,
-  high: 5,
-};
 
 /**
  * 解析LskyPro API响应
@@ -133,10 +126,11 @@ export class LskyProUploader {
    * @param file 要上传的文件
    * @returns 请求配置对象
    */
-  private getRequestOptions(file: File): RequestInit {
-    const headers = new Headers();
-    headers.append("Authorization", this.lskyToken);
-    headers.append("Accept", "application/json");
+  private getRequestOptions(file: File) {
+    const headers: Record<string, string> = {
+      Authorization: this.lskyToken,
+      Accept: "application/json",
+    };
 
     const formData = new FormData();
     formData.append("file", file);
@@ -160,43 +154,71 @@ export class LskyProUploader {
    * @param file 要上传的文件对象
    * @returns 封装后的上传结果
    */
-private async uploadRawFile(file: File): Promise<UploadResult> {
-  dbg(t("main.uploadRawFile"))
-  try {
-    // 获取请求选项
-    const requestOptions = this.getRequestOptions(file);
-    // 发送请求到LskyPro服务器
-    const res = await fetch(this.lskyUrl, requestOptions);
-
-    // 检查HTTP响应状态
-    if (!res.ok) {
-      return { success: false, msg: t('upload.httpError') + ': ' + res.status };
-    }
-    
-    // 尝试解析JSON响应
-    let json: LskyApiResponse;
+  private async uploadRawFile(file: File): Promise<UploadResult> {
+    dbg(t("main.uploadRawFile"))
     try {
-      json = await res.json();
-    } catch {
-      return { success: false, msg: t('response.parseFailed') };
-    }
+      // 获取请求选项
+      const requestOptions = this.getRequestOptions(file);
+      const { body, contentType } = await buildMultipartBody(requestOptions.body);
+      // 发送请求到LskyPro服务器
+      const res = await requestUrl({
+        url: this.lskyUrl,
+        method: "POST",
+        body,
+        headers: {
+          ...requestOptions.headers,
+          "Content-Type": contentType
+        }
+      });
 
-    // 解析上传结果
-    const parsed = parseUploadResult(json);
+      dbg(res)
+      dbg(res.status)
+      dbg(res.headers)
+      dbg(res.text)
 
-    // 处理成功情况
-    if (parsed.success && parsed.url) {
-      return { success: true, url: parsed.url };
-    } else {
-      // 不输出警告，只返回失败信息
-      return { success: false, msg: parsed.message };
+      // 检查HTTP响应状态
+      if (res.status < 200 || res.status >= 300) {
+        return { success: false, msg: t("upload.httpError") + ": " + res.status };
+      }
+      
+      // 尝试解析JSON响应
+      let json: LskyApiResponse;
+      try {
+          const text = res.text ?? "";
+          json = JSON.parse(text);
+      } catch {
+        return { success: false, msg: t('response.parseFailed') };
+      }
+
+      // 解析上传结果
+      const parsed = parseUploadResult(json);
+
+      // 处理成功情况
+      if (parsed.success && parsed.url) {
+        return { success: true, url: parsed.url };
+      } else {
+        // 不输出警告，只返回失败信息
+        return { success: false, msg: parsed.message };
+      }
+    } catch (err) {
+      // err 可能不是 Error，而是任意值
+      let msg = t('upload.requestException');
+
+      if (err instanceof Error) {
+        msg = err.message;
+      } else if (typeof err === 'string') {
+        msg = err;
+      } else {
+        try {
+          msg = JSON.stringify(err);
+        } catch {
+          // 保底不处理
+        }
+      }
+
+      return { success: false, msg };
     }
-  } catch (error: any) {
-    // 不打印错误日志，让上层统一处理
-    return { success: false, msg: error?.message || t('upload.requestException') };
   }
-}
-
 
   /**
    * 将本地 Vault 文件路径转为 File 对象
@@ -211,9 +233,6 @@ private async uploadRawFile(file: File): Promise<UploadResult> {
 
     // 读取文件二进制内容
     const data = await this.app.vault.readBinary(abstractFile);
-    
-    // 获取文件扩展名，默认为 png
-    const fileExt = abstractFile.extension;
     
     // 创建 Blob 和 File 对象
     const file = new File([new Blob([data], { type: 'image/${fileExt}' })], abstractFile.name);
@@ -235,9 +254,12 @@ private async uploadRawFile(file: File): Promise<UploadResult> {
 
       // 调用原始上传方法
       return await this.uploadRawFile(file);
-    } catch (err: any) {
-      // 处理上传错误
-      return { success: false, msg: err?.message || t('upload.error') };
+    } catch (err) {
+      const message = err instanceof Error
+        ? err.message
+        : t("upload.error");
+
+      return { success: false, msg: message };
     }
   }
 
@@ -266,9 +288,11 @@ private async uploadRawFile(file: File): Promise<UploadResult> {
       // 收集所有成功上传的URL
       const urls = results.map((res) => res.url || '').filter(Boolean);
       return { success: true, result: urls };
-    } catch (err: any) {
-      // 处理批量上传错误
-      return { success: false, msg: err?.message || t('upload.batchFailed') };
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : t("upload.batchFailed");
+
+      return { success: false, msg: message };
     }
   }
 
@@ -295,8 +319,12 @@ private async uploadRawFile(file: File): Promise<UploadResult> {
         current++;
         if (result.success) successCount++;
         new Notice(`${t('upload.progress')}: ${current}/${total}`);
-      } catch (err: any) {
-        results.push({ success: false, msg: err?.message || t("upload.exception") });
+      } catch (err) {
+        const message = err instanceof Error
+          ? err.message
+          : t("upload.exception");
+
+        results.push({ success: false, msg: message });
         current++;
         new Notice(`${t('upload.exception')}: ${current}/${total}`);
       }
@@ -305,16 +333,16 @@ private async uploadRawFile(file: File): Promise<UploadResult> {
     const running: Promise<void>[] = [];
 
     for (const item of inputs) {
-      const task = queue(item);
+      const task = queue(item).finally(() => {
+        const idx = running.indexOf(task);
+        if (idx !== -1) running.splice(idx, 1);
+      });
+
       running.push(task);
 
       // 并发控制
       if (running.length >= concurrency) {
         await Promise.race(running);
-        // 清理已完成任务
-        for (let i = running.length - 1; i >= 0; i--) {
-          if (running[i].catch) running.splice(i, 1);
-        }
       }
     }
 
@@ -330,13 +358,13 @@ private async uploadRawFile(file: File): Promise<UploadResult> {
           total,
           failedCount: failed.length,
         }),
-        result: results.filter(r => r.success).map(r => r.url!),
+        result: results.filter(r => r.success).map(r => r.url),
       };
     }
 
     return {
       success: true,
-      result: results.map(r => r.url!),
+      result: results.map(r => r.url),
       msg: t('upload.summary.allCompleted', { total }),
     };
   }
@@ -353,8 +381,68 @@ private async uploadRawFile(file: File): Promise<UploadResult> {
       if (!file) throw new Error(t("upload.clipboardEmpty"));
 
       return await this.uploadSingleFile(file);
-    } catch (err: any) {
-      return { success: false, msg: err?.message || t("upload.clipboardFailed") };
+    } catch (err) {
+      const message = err instanceof Error
+        ? err.message
+        : t("upload.clipboardFailed");
+
+      return { success: false, msg: message };
     }
   }
+}
+
+/**
+ * 将 FormData 转为 requestUrl 可接受的 multipart/form-data body
+ */
+export async function buildMultipartBody(formData: FormData) {
+  const boundary = "----LskyProBoundary" + Math.random().toString(16).slice(2);
+
+  const chunks: Uint8Array[] = [];
+
+  const encoder = new TextEncoder();
+
+  const iterable = formData as unknown as {
+    entries(): IterableIterator<[string, any]>;
+  };
+
+  // 遍历 FormData
+  for (const [field, value] of iterable.entries()) {
+    const header =
+      `--${boundary}\r\n` +
+      (value instanceof File
+        ? `Content-Disposition: form-data; name="${field}"; filename="${value.name}"\r\n` +
+          `Content-Type: ${value.type || "application/octet-stream"}\r\n\r\n`
+        : `Content-Disposition: form-data; name="${field}"\r\n\r\n`);
+
+    chunks.push(encoder.encode(header));
+
+    if (value instanceof File) {
+      // File → ArrayBuffer
+      const buf = await value.arrayBuffer();
+      chunks.push(new Uint8Array(buf));
+    } else {
+      // 普通字符串
+      chunks.push(encoder.encode(String(value)));
+    }
+
+    chunks.push(encoder.encode("\r\n"));
+  }
+
+  // 结束 boundary
+  chunks.push(encoder.encode(`--${boundary}--\r\n`));
+
+  // 合并所有 Uint8Array
+  const size = chunks.reduce((sum, c) => sum + c.length, 0);
+  const body = new Uint8Array(size);
+
+  let offset = 0;
+  for (const chunk of chunks) {
+    body.set(chunk, offset);
+    offset += chunk.length;
+  }
+
+  return {
+    body: body.buffer,
+    contentType: `multipart/form-data; boundary=${boundary}`,
+  };
 }

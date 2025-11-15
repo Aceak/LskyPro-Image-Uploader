@@ -2,7 +2,6 @@
  * 工具函数集合
  * 提供插件中使用的各种通用辅助方法
  */
-import { Readable } from "stream";
 import { App, TFile, Platform, FileSystemAdapter } from "obsidian";
 
 /**
@@ -67,25 +66,8 @@ export function isAnImage(ext: string) {
  * @param path 文件路径
  * @returns 如果是图片文件返回 true，否则返回 false
  */
-export function isAssetTypeAnImage(path: string): Boolean {
+export function isAssetTypeAnImage(path: string): boolean {
   return isAnImage(getExtname(path));
-}
-
-/**
- * 将可读流转换为字符串
- * @param stream 可读流对象
- * @returns 转换后的字符串
- */
-export async function streamToString(stream: Readable) {
-  const chunks = [];
-
-  // 逐块读取流数据
-  for await (const chunk of stream) {
-    chunks.push(Buffer.from(chunk));
-  }
-
-  // 合并所有数据块并转换为字符串
-  return Buffer.concat(chunks).toString("utf-8");
 }
 
 /**
@@ -128,31 +110,25 @@ export function getLastImage(list: string[]) {
 }
 
 /**
- * 任意对象接口定义
- * 用于类型注解中允许任何键值对的对象
- */
-interface AnyObj {
-  [key: string]: any;
-}
-
-/**
  * 将数组转换为对象，使用指定的键作为对象属性
  * @param arr 输入数组
  * @param key 用于提取对象属性的键名
  * @returns 转换后的对象
  */
-export function arrayToObject<T extends AnyObj>(
+export function arrayToObject<T, K extends keyof T>(
   arr: T[],
-  key: string
-): { [key: string]: T } {
-  const obj: { [key: string]: T } = {};
-  
-  // 遍历数组，将每个元素添加到对象中
-  arr.forEach(element => {
-    obj[element[key]] = element;
-  });
-  
-  return obj;
+  key: K
+): Record<T[K] & string, T> {
+  const obj: Record<string, T> = {};
+
+  for (const item of arr) {
+    const v = item[key];
+    if (typeof v === "string") {
+      obj[v] = item;
+    }
+  }
+
+  return obj as Record<T[K] & string, T>;
 }
 
 /**
@@ -202,10 +178,11 @@ function logPrefix(level: string): string {
 }
 
 // 调试输出函数(仅当 window.__LSKY_DEBUG__ === true 时才输出日志)
-export function dbg(...args: any[]): void {
+export function dbg(...args: unknown[]): void {
   try {
-    if (typeof window !== "undefined" && (window as any).__LSKY_DEBUG__ === true) {
-      console.log(logPrefix("debug"), ...args);
+    const win = window as unknown as { __LSKY_DEBUG__?: boolean };
+    if (typeof win.__LSKY_DEBUG__ === "boolean" && win.__LSKY_DEBUG__) {
+      console.debug(logPrefix("debug"), ...args);
     }
   } catch {
     // 忽略环境不支持 window 或 console 的情况
@@ -213,7 +190,7 @@ export function dbg(...args: any[]): void {
 }
 
 // 警告输出函数
-export function warn(...args: any[]): void {
+export function warn(...args: unknown[]): void {
   try {
     console.warn(logPrefix("warn"), ...args);
   } catch {
@@ -222,7 +199,7 @@ export function warn(...args: any[]): void {
 }
 
 // 错误输出函数
-export function error(...args: any[]): void {
+export function error(...args: unknown[]): void {
   try {
     console.error(logPrefix("error"), ...args);
   } catch {

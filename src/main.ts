@@ -37,6 +37,20 @@ interface Image {
   source: string;
 }
 
+interface PastedImageItem {
+  path: string;
+  source: string;
+  name: string;
+}
+
+declare global {
+  interface Window {
+    __LSKY_DEBUG__?: boolean;
+    __LSKY_RUNTIME_DEBUG__?: boolean;
+  }
+}
+export {};
+
 export default class imageAutoUploadPlugin extends Plugin {
   settings: PluginSettings;
   helper: Helper;
@@ -51,22 +65,22 @@ export default class imageAutoUploadPlugin extends Plugin {
       this.settings._debug = false;
     }
 
-    (window as any).__LSKY_DEBUG__ = this.settings._debug === true;
+    window.__LSKY_DEBUG__ = this.settings._debug === true;
 
     if (!Object.getOwnPropertyDescriptor(window, "__LSKY_RUNTIME_DEBUG__")) {
       Object.defineProperty(window, "__LSKY_RUNTIME_DEBUG__", {
         configurable: true,
         get() {
-          return (window as any).__LSKY_DEBUG__;
+          return window.__LSKY_DEBUG__;
         },
         set(value: boolean) {
-          (window as any).__LSKY_DEBUG__ = !!value;
+          window.__LSKY_DEBUG__ = !!value;
         },
       });
     }
 
-    if ((window as any).__LSKY_DEBUG__) {
-      console.log("[LskyPro DEBUG]"+ t("main.debugEnabled"));
+    if (window.__LSKY_DEBUG__) {
+      console.debug("[LskyPro]"+ t("main.debugEnabled"));
     }
   }
 
@@ -126,7 +140,7 @@ export default class imageAutoUploadPlugin extends Plugin {
       checkCallback: (checking: boolean) => {
         let leaf = this.app.workspace.getActiveViewOfType(MarkdownView);
         if (!leaf) return false;
-        if (!checking) this.uploadAllFile();
+        if (!checking) void this.uploadAllFile();
         return true;
       },
     });
@@ -139,7 +153,7 @@ export default class imageAutoUploadPlugin extends Plugin {
       checkCallback: (checking: boolean) => {
         let leaf = this.app.workspace.getActiveViewOfType(MarkdownView);
         if (!leaf) return false;
-        if (!checking) this.downloadAllImageFiles();
+        if (!checking) void this.downloadAllImageFiles();
         return true;
       },
     });
@@ -204,7 +218,7 @@ export default class imageAutoUploadPlugin extends Plugin {
 
             if (imageList.length) {
               dbg(t("main.pasteNetworkImages", { count: imageList.length }));
-              this.handleNetworkPasteImages(editor, imageList);
+              void this.handleNetworkPasteImages(imageList);
               return;
             }
           }
@@ -379,7 +393,7 @@ export default class imageAutoUploadPlugin extends Plugin {
 
       // 生成安全文件名
       let asset = getUrlAsset(url);
-      asset = decodeURI(asset).replaceAll(/[\\/:\*\?"<>|]/g, "-");
+      asset = decodeURI(asset).replaceAll(/[\\\/:*?"<>|]/g, "-");
 
       // 如果文件已存在，则加随机前缀
       const saveName = this.app.vault.getAbstractFileByPath(`${folderPathAbs}/${asset}`)
@@ -474,7 +488,7 @@ export default class imageAutoUploadPlugin extends Plugin {
       }
 
       // 文件名清理
-      const safeName = decodeURI(filename).replace(/[\\/:\*\?"<>|]/g, '-');
+      const safeName = decodeURI(filename).replace(/[\\\/:*?"<>|]/g, "-");
       const savePath = `${folderPath}/${safeName}.${ext}`;
 
       // 写入 vault
@@ -485,9 +499,10 @@ export default class imageAutoUploadPlugin extends Plugin {
       });
 
       return { ok: true, msg: 'ok', path: savePath };
-    } catch (err: any) {
-      error(t('download.failed')+':'+err);
-      return { ok: false, msg: err?.message || t('download.exception') };
+    } catch (err) {
+      const e = err as Error;
+      error(t('download.failed')+':'+e.message);
+      return { ok: false, msg: e?.message || t('download.exception') };
     }
   }
 
@@ -526,11 +541,9 @@ export default class imageAutoUploadPlugin extends Plugin {
   }
 
   // 获取文件对象
-  getFile(fileName: string, fileMap: any) {
-    if (!fileMap) {
-      fileMap = arrayToObject(this.app.vault.getFiles(), 'name');
-    }
-    return fileMap[fileName];
+  getFile(fileName: string, fileMap?: Record<string, TFile>) {
+    const map = fileMap ?? arrayToObject(this.app.vault.getFiles(), "name") as Record<string, TFile>;
+    return map[fileName];
   }
 
   // upload all file
@@ -575,16 +588,24 @@ export default class imageAutoUploadPlugin extends Plugin {
             absoPath = parentDir + matchPath.substring(1)
         } else {
           const levelUpCount = matchPath.split('../').length-1;
+
           const ParentParts = parentDir.split('/'); 
           const relativeParts = matchPath.split('/');
+
           const combined = [
             ...ParentParts.slice(0, -levelUpCount),
             ...relativeParts.slice(levelUpCount),
           ];
+
           absoPath = combined.join('/');
         }
+        const af = this.app.vault.getAbstractFileByPath(absoPath);
 
-        file = this.app.vault.getAbstractFileByPath(absoPath) as TFile;
+        if (af && af instanceof TFile) {
+          file = af;
+        } else {
+          warn(t('main.notafile') + absoPath, af);
+        }
       }
 
       if(!file) {
@@ -655,7 +676,7 @@ export default class imageAutoUploadPlugin extends Plugin {
   }
 
   // 处理粘贴中的网络图片再上传
-  async handleNetworkPasteImages(editor: Editor, imageList: any[]) {
+  async handleNetworkPasteImages(imageList: PastedImageItem[]) {
     try {
       const res = await this.uploader.uploadFiles(imageList.map((i) => i.path));
       if (res.success && res.result) {
@@ -689,40 +710,39 @@ export default class imageAutoUploadPlugin extends Plugin {
       ...(this.settings.uploadedImages || []),
       ...urls,
     ];
-    this.saveSettings();
+    void this.saveSettings();
   }
 
   // 检查是否可以上传图片
   canUpload(clipboardData: DataTransfer) {
-    this.settings.applyImage;
+    if (!this.settings.applyImage) return false;
+
     const files = clipboardData.files;
     const text = clipboardData.getData('text');
 
-    const hasImageFile =
-      files.length !== 0 && files[0].type.startsWith('image');
-    if (hasImageFile) {
-      if (!!text) {
-        return this.settings.applyImage;
-      } else {
-        return true;
-      }
-    } else {
-      return false;
-    }
+    const isImage =
+      files.length > 0 && files[0].type.startsWith("image");
+
+    if (!isImage) return false;
+
+    return text ? this.settings.applyImage : true;
   }
 
   // 上传文件并嵌入 Imgur 图片
   async uploadFileAndEmbedImgurImage(
     editor: Editor,
-    callback: Function,
+    callback: (editor: Editor, pasteId: string) => Promise<string>,
     clipboardData: DataTransfer
   ) {
-    let pasteId = (Math.random() + 1).toString(36).substring(2, 7);
+    const pasteId = (Math.random() + 1).toString(36).substring(2, 7);
+
     this.insertTemporaryText(editor, pasteId);
+
     const name = clipboardData.files[0].name;
+
     try {
       const url = await callback(editor, pasteId);
-      this.embedMarkDownImage(editor, pasteId, url, name);
+      this.embedMarkDownImage(editor, pasteId, url);
     } catch (e) {
       this.handleFailedUpload(editor, pasteId, e);
     }
@@ -742,8 +762,7 @@ export default class imageAutoUploadPlugin extends Plugin {
   embedMarkDownImage(
     editor: Editor,
     pasteId: string,
-    imageUrl: any,
-    name: string = ""
+    imageUrl: string,
   ) {
     let progressText = imageAutoUploadPlugin.progressTextFor(pasteId);
     let markDownImage = `![](${imageUrl})`;
@@ -756,10 +775,21 @@ export default class imageAutoUploadPlugin extends Plugin {
   }
 
   // 处理上传失败
-  handleFailedUpload(editor: Editor, pasteId: string, reason: any) {
-    new Notice(t(reason));
-    error(t('upload.requestException') + ': ' + reason);
-    let progressText = imageAutoUploadPlugin.progressTextFor(pasteId);
+  handleFailedUpload(editor: Editor, pasteId: string, reason: unknown) {
+    let msg = '';
+
+    if (reason instanceof Error) {
+      msg = reason.message;
+    } else if (typeof reason === 'string') {
+      msg = reason;
+    } else {
+      msg = String(reason ?? 'Unknown Error');
+    }
+
+    new Notice(msg);
+    error(t('upload.requestException') + ': ' + msg);
+
+    const progressText = imageAutoUploadPlugin.progressTextFor(pasteId);
     imageAutoUploadPlugin.replaceFirstOccurrence(
       editor,
       progressText,

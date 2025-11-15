@@ -33,6 +33,7 @@ export default {
   "main.uploaderInit": "上傳器初始化完成",
   "main.pluginLoaded": "插件加載成功",
   "main.debugEnabled": "除錯模式已啟用",
+  "main.notafile": "解析路徑成功但不是文件:",
 
   /* ===============================
    * 下載流程

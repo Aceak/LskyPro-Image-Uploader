@@ -103,10 +103,18 @@ export function setLanguage(lang: string): void {
   }
 }
 
-function getValue(obj: any, path: string): any {
-  if (!obj) return undefined;
-  if (obj[path] !== undefined) return obj[path];
-  return path.split(".").reduce((acc, key) => (acc && acc[key] !== undefined ? acc[key] : undefined), obj);
+function getValue(obj: unknown, path: string): string | undefined {
+  if (typeof obj !== "object" || obj === null) return undefined;
+
+  const direct = (obj as Record<string, unknown>)[path];
+  if (typeof direct === "string") return direct;
+
+  return path.split(".").reduce<unknown>((acc, key) => {
+    if (acc && typeof acc === "object" && key in acc) {
+      return (acc as Record<string, unknown>)[key];
+    }
+    return undefined;
+  }, obj) as string | undefined;
 }
 
 export function t(

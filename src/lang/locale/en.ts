@@ -151,7 +151,7 @@ export default {
   "setting.token": "API token",
   "setting.storage_id": "Storage ID",
   "setting.strategy_id": "Strategy ID",
-  "setting.uploadServer": "Upload Server",
+  "setting.uploadServer": "Server address",
   "setting.workOnNetWork": "Work on network images",
   "setting.newWorkBlackDomains": "Network domain blacklist",
   "setting.deleteSource": "Delete source file after upload",

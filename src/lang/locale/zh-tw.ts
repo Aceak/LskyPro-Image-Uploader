@@ -150,7 +150,7 @@ export default {
   "setting.token": "API 金鑰",
   "setting.storage_id": "儲存 ID",
   "setting.strategy_id": "策略 ID",
-  "setting.uploadServer": "上傳伺服器",
+  "setting.uploadServer": "伺服器地址",
   "setting.workOnNetWork": "處理網絡圖片",
   "setting.newWorkBlackDomains": "網域黑名單",
   "setting.deleteSource": "上傳成功後刪除源文件",

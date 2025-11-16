@@ -36,13 +36,15 @@ function isLocaleKey(v: string): v is LocaleKey {
   return v in localeMap;
 }
 
-function getLocale(code: string) {
+function getLocale(code: string): { key: LocaleKey; dict: TranslationDict } {
   const norm = normalizeLocale(code);
+
   if (isLocaleKey(norm)) {
-    return { key: norm, dict: localeMap[norm] as TranslationDict };
+    return { key: norm, dict: localeMap[norm] };
   }
+
   warn(`[i18n] Missing or empty locale "${norm}", fallback to English.`);
-  return { key: "en" as LocaleKey, dict: en as TranslationDict };
+  return { key: "en", dict: en };
 }
 
 

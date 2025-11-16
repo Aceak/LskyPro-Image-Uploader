@@ -142,8 +142,8 @@ export class SettingTab extends PluginSettingTab {
       .setDesc(t('settings.defaultUploader.desc'))
       .addDropdown(cb =>
           cb
-            .addOption('LskyPro-v2', 'LskyPro v2')
-            .addOption('LskyPro-v1', 'LskyPro v1')
+            .addOption('LskyPro-v2', 'V2')
+            .addOption('LskyPro-v1', 'V1')
             .setValue(this.plugin.settings.uploader)
             .onChange(async value => {
               this.plugin.settings.uploader = value;

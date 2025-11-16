@@ -122,7 +122,7 @@ export class LskyProUploader {
 
     const label = getSettingLabel(key) ?? key;
 
-    dbg(t("setting.updateConfig") + `${label} = ${value}`);
+    dbg(t("setting.updateConfig") + `${label} = ${String(value)}`);
 
     // 仅在需要时重新初始化配置
     this.initializeConfig();

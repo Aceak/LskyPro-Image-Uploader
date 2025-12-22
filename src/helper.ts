@@ -51,7 +51,11 @@ export default class Helper {
 
     const cache = this.app.metadataCache.getCache(file.path);
     if (cache?.frontmatter && key in cache.frontmatter) {
-      return cache.frontmatter[key] as T;
+      const value = cache.frontmatter[key];
+      // 当值存在且不为undefined/null时返回值，否则返回默认值
+      if (value !== undefined && value !== null) {
+        return value as T;
+      }
     }
 
     return defaultValue;

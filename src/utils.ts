@@ -269,7 +269,7 @@ export function getPlatformEnv(app: App) {
   const adapter = app.vault.adapter;
   if (Platform.isMobileApp) return "mobile";
   if (Platform.isDesktopApp && adapter instanceof FileSystemAdapter) return "desktop";
-  return "web";
+  return "";
 }
 
 // 获取并发值

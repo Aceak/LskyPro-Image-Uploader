@@ -1,5 +1,5 @@
 // i18n.ts
-import { moment } from "obsidian";
+import { App, getLanguage } from "obsidian";
 import { dbg, warn} from "../utils";
 
 import en from "./locale/en";
@@ -48,25 +48,30 @@ function getLocale(code: string): { key: LocaleKey; dict: TranslationDict } {
 }
 
 
-const init = getLocale(moment.locale());
-let currentLocale: LocaleKey = init.key;
-let locale: TranslationDict = init.dict;
+// 默认使用英语作为初始语言
+let currentLocale: LocaleKey = "en";
+let locale: TranslationDict = en;
 
 if (!locale || Object.keys(locale).length === 0) {
   warn(`[i18n] Missing or empty locale "${currentLocale}", fallback to English.`);
   locale = en;
 }
 
-
-export function getLanguage(): string {
+export function getCurrentLanguage(): string {
   return currentLocale;
 }
 
-export function setLanguage(lang: string): void {
+export function setLanguage(lang: string, app?: App): void {
   let target = lang;
-  if (lang === "auto" || lang === "Auto") {
-    target = moment.locale();
-    dbg("[i18n] Auto mode -> system locale:", normalizeLocale(target));
+  if ((lang === "auto" || lang === "Auto") && app) {
+    try {
+      // 使用Obsidian内置API获取语言设置
+      target = getLanguage();
+      dbg("[i18n] Auto mode -> Obsidian locale:", normalizeLocale(target));
+    } catch (e) {
+      warn("[i18n] Failed to get Obsidian language, fallback to English");
+      target = "en";
+    }
   } else {
     dbg("[i18n] Switched to language:", normalizeLocale(lang));
   }
@@ -75,6 +80,11 @@ export function setLanguage(lang: string): void {
   currentLocale = next.key;
   locale = next.dict;
   dbg("[i18n] Active locale:", currentLocale);
+}
+
+// 初始化函数，用于插件加载时设置语言
+export function initLanguage(app: App, lang: string): void {
+  setLanguage(lang, app);
 }
 
 function getValue(obj: unknown, path: string): string | undefined {

@@ -5,14 +5,14 @@
 import { App, PluginSettingTab, Setting, Notice } from "obsidian";
 import imageAutoUploadPlugin from "./main";
 import { t, languageName, TranslationKeys } from "./lang/i18n";
-import { error, dbg } from "./utils";
+import { error, dbg, debugState } from "./utils";
 
 /**
  * 插件设置接口
  * 定义所有可配置的插件选项
  */
 export interface PluginSettings {
-  _debug: boolean;                // 调试模式，用于开发和测试
+  debug: boolean;                // 调试模式，用于开发和测试
   uploadByClipSwitch: boolean;    // 启用/禁用剪贴板自动上传
   uploadAttachmentsSwitch: boolean; // 启用/禁用附件自动上传
   uploadServer: string;           // LskyPro服务器地址
@@ -33,7 +33,7 @@ export interface PluginSettings {
  * 当用户首次安装插件时使用
  */
 export const DEFAULT_SETTINGS: PluginSettings = {
-  _debug: false,                  // 默认禁用调试模式
+  debug: false,                  // 默认禁用调试模式
   uploadByClipSwitch: true,       // 默认启用剪贴板自动上传
   uploadAttachmentsSwitch: true,  // 默认启用附件自动上传
   uploader: "LskyPro-v2",         // 默认使用V2版本上传器
@@ -104,9 +104,7 @@ export class SettingTab extends PluginSettingTab {
     const { containerEl } = this;
     containerEl.empty();
 
-    new Setting(containerEl)
-      .setName(t('settings.title'))
-      .setHeading();
+    
     
     // 剪贴板自动上传设置
     new Setting(containerEl)
@@ -185,7 +183,7 @@ export class SettingTab extends PluginSettingTab {
       );
       
     // 根据版本显示对应的存储ID设置
-    if (this.plugin.settings.uploader === 'LskyPro-V2') {
+    if (this.plugin.settings.uploader === 'LskyPro-v2') {
       new Setting(containerEl)
       .setName(t('settings.storageId'))
       .setDesc(t('settings.storageId.desc'))
@@ -200,7 +198,7 @@ export class SettingTab extends PluginSettingTab {
             this.plugin.uploader?.updateSetting("storage_id", key);
           })
       );
-    } else if (this.plugin.settings.uploader === 'LskyPro-V1') {
+    } else if (this.plugin.settings.uploader === 'LskyPro-v1') {
       new Setting(containerEl)
       .setName(t('settings.strategyId'))
       .setDesc(t('settings.strategyId.desc'))
@@ -286,6 +284,25 @@ export class SettingTab extends PluginSettingTab {
       });
 
     new Setting(containerEl)
+      .setName(t('settings.debugMode'))
+      .setDesc(t('settings.debugMode.desc'))
+      .addToggle(toggle =>
+        toggle
+          .setValue(this.plugin.settings.debug)
+          .onChange(async value => {
+            this.plugin.settings.debug = value;
+            await this.plugin.saveSettings();
+            // 直接更新调试模式状态
+            debugState.enabled = value;
+            if (value) {
+              new Notice(t('settings.debugMode.enabled'));
+            } else {
+              new Notice(t('settings.debugMode.disabled'));
+            }
+          })
+      );
+
+    new Setting(containerEl)
       .setName(t('settings.language'))
       .setDesc(t('settings.language.desc'))
       .addDropdown(dropdown => {
@@ -300,7 +317,7 @@ export class SettingTab extends PluginSettingTab {
             await this.plugin.saveSettings();
             try {
               const { setLanguage } = await import('./lang/i18n');
-              setLanguage(value.toLowerCase());
+              setLanguage(value.toLowerCase(), this.app);
               dbg(t('settings.language.switched'), value);
               new Notice(t('settings.language.switched') + ' '  + languageName[value]);
               this.display(); 

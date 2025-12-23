@@ -23,12 +23,13 @@ import {
   dbg,
   warn,
   error,
+  debugState,
 } from "./utils";
 import { LskyProUploader } from "./upload"; // 统一支持v1和v2版本的上传器
 import Helper from "./helper";
 
 import { SettingTab, PluginSettings, DEFAULT_SETTINGS } from "./setting";
-import { t, setLanguage } from "./lang/i18n";
+import { t, initLanguage, getCurrentLanguage } from "./lang/i18n";
 
 interface Image {
   path: string;
@@ -43,13 +44,7 @@ interface PastedImageItem {
   name: string;
 }
 
-declare global {
-  interface Window {
-    __LSKY_DEBUG__?: boolean;
-    __LSKY_RUNTIME_DEBUG__?: boolean;
-  }
-}
-export {};
+
 
 export default class imageAutoUploadPlugin extends Plugin {
   settings: PluginSettings;
@@ -61,25 +56,14 @@ export default class imageAutoUploadPlugin extends Plugin {
     const loaded = await this.loadData();
     this.settings = Object.assign({}, DEFAULT_SETTINGS, loaded);
 
-    if (typeof this.settings._debug !== "boolean") {
-      this.settings._debug = false;
+    if (typeof this.settings.debug !== "boolean") {
+      this.settings.debug = false;
     }
 
-    window.__LSKY_DEBUG__ = this.settings._debug === true;
+    // 直接更新调试模式状态
+    debugState.enabled = this.settings.debug;
 
-    if (!Object.getOwnPropertyDescriptor(window, "__LSKY_RUNTIME_DEBUG__")) {
-      Object.defineProperty(window, "__LSKY_RUNTIME_DEBUG__", {
-        configurable: true,
-        get() {
-          return window.__LSKY_DEBUG__;
-        },
-        set(value: boolean) {
-          window.__LSKY_DEBUG__ = !!value;
-        },
-      });
-    }
-
-    if (window.__LSKY_DEBUG__) {
+    if (this.settings.debug) {
       console.debug("[LskyPro]"+ t("main.debugEnabled"));
     }
   }
@@ -102,11 +86,11 @@ export default class imageAutoUploadPlugin extends Plugin {
     await this.loadSettings();
 
     try {
-      setLanguage(this.settings.language);
-      dbg(t("main.languageSet"), this.settings.language);
-    } catch (err) {
-      error(t("main.languageInitFailed"), err);
-    }
+          initLanguage(this.app, "auto");
+          dbg(t("main.languageSet"), getCurrentLanguage());
+        } catch (err) {
+          error(t("main.languageInitFailed"), err);
+        }
 
     this.helper = new Helper(this.app);
     this.reinitUploader();
@@ -284,8 +268,9 @@ export default class imageAutoUploadPlugin extends Plugin {
 
   // 注册移动端自动上传事件
   registerMobileAutoUpload() {
-    this.registerEvent(
-      this.app.vault.on("create", async (file) => {
+    // 在布局准备就绪后再注册create事件，确保编辑器和工作区完全加载
+    const layoutReadyEvent = this.app.workspace.onLayoutReady(() => {
+      const createEvent = this.app.vault.on("create", async (file) => {
         if (!(file instanceof TFile)) return;
         if (!isAssetTypeAnImage(file.path)) return;
 
@@ -316,8 +301,12 @@ export default class imageAutoUploadPlugin extends Plugin {
         } catch (e) {
           error(t("upload.error") + ":" + e);
         }
-      })
-    );
+      });
+      // 注册create事件
+      this.registerEvent(createEvent);
+    });
+    // 注册onLayoutReady事件
+    this.registerEvent(layoutReadyEvent as any);
   }
 
   // 添加上传菜单到上下文菜单
@@ -537,9 +526,43 @@ export default class imageAutoUploadPlugin extends Plugin {
     return imageList;
   }
 
+  // 文件映射缓存
+  private fileMapCache: Record<string, TFile> | null = null;
+  private filePathMapCache: Record<string, TFile> | null = null;
+  private lastCacheTime: number = 0;
+  private CACHE_EXPIRE_TIME = 3000; // 缓存有效期3秒
+
+  // 获取文件映射（带缓存）
+  private getFileMap(): Record<string, TFile> {
+    const now = Date.now();
+    // 如果缓存存在且未过期，直接使用
+    if (this.fileMapCache && now - this.lastCacheTime < this.CACHE_EXPIRE_TIME) {
+      return this.fileMapCache;
+    }
+    // 否则重新构建缓存
+    this.fileMapCache = arrayToObject(this.app.vault.getFiles(), "name");
+    this.filePathMapCache = arrayToObject(this.app.vault.getFiles(), "path");
+    this.lastCacheTime = now;
+    return this.fileMapCache;
+  }
+
+  // 获取文件路径映射（带缓存）
+  private getFilePathMap(): Record<string, TFile> {
+    const now = Date.now();
+    // 如果缓存存在且未过期，直接使用
+    if (this.filePathMapCache && now - this.lastCacheTime < this.CACHE_EXPIRE_TIME) {
+      return this.filePathMapCache;
+    }
+    // 否则重新构建缓存
+    this.fileMapCache = arrayToObject(this.app.vault.getFiles(), "name");
+    this.filePathMapCache = arrayToObject(this.app.vault.getFiles(), "path");
+    this.lastCacheTime = now;
+    return this.filePathMapCache;
+  }
+
   // 获取文件对象
   getFile(fileName: string, fileMap?: Record<string, TFile>) {
-    const map = fileMap ?? arrayToObject(this.app.vault.getFiles(), "name");
+    const map = fileMap ?? this.getFileMap();
     return map[fileName];
   }
 
@@ -557,8 +580,8 @@ export default class imageAutoUploadPlugin extends Plugin {
     const basePath =
       env === 'desktop' ? (this.app.vault.adapter as FileSystemAdapter).getBasePath() : '';
 
-    const fileMap = arrayToObject(this.app.vault.getFiles(), 'name');
-    const filePathMap = arrayToObject(this.app.vault.getFiles(), 'path');
+    const fileMap = this.getFileMap();
+    const filePathMap = this.getFilePathMap();
     const fileArray = this.filterFile(this.helper.getAllFiles());
 
     const imageList: Image[] = [];

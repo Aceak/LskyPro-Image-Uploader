@@ -20,7 +20,7 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 22.20.0
-          cache: 'npm'
+          cache: "npm"
 
       - name: Verify environment
         run: |
@@ -57,6 +57,10 @@ jobs:
           npm run build
           echo "Build complete: main.js + manifest.json"
 
+      - name: Verify build output
+        run: |
+          ls -lh dist
+
       - name: Create GitHub Release and upload assets
         uses: softprops/action-gh-release@v2
         with:
@@ -64,7 +68,7 @@ jobs:
           name: Release ${{ steps.get_tag.outputs.tag }}
           draft: true
           files: |
-            main.js
+            dist/main.js
             manifest.json
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

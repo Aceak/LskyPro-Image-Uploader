@@ -4,15 +4,15 @@
  */
 import { App, PluginSettingTab, Setting, Notice } from "obsidian";
 import imageAutoUploadPlugin from "./main";
-import { t, TranslationKeys } from "./lang/i18n";
-import { error, dbg } from "./utils";
+import { t, languageName, TranslationKeys } from "./lang/i18n";
+import { error, dbg, debugState } from "./utils";
 
 /**
  * 插件设置接口
  * 定义所有可配置的插件选项
  */
 export interface PluginSettings {
-  _debug: boolean;                // 调试模式，用于开发和测试
+  debug: boolean;                // 调试模式，用于开发和测试
   uploadByClipSwitch: boolean;    // 启用/禁用剪贴板自动上传
   uploadAttachmentsSwitch: boolean; // 启用/禁用附件自动上传
   uploadServer: string;           // LskyPro服务器地址
@@ -24,6 +24,7 @@ export interface PluginSettings {
   newWorkBlackDomains: string;    // 网络黑名单域名
   deleteSource: boolean;          // 上传后删除源文件
   concurrencyMode: ConcurrencyLevel;        // 并发模式（1、3、5）
+  language: string;               // 语言设置（Auto、zh-cn、en）
   uploadedImages?: string[];
 }
 
@@ -32,7 +33,7 @@ export interface PluginSettings {
  * 当用户首次安装插件时使用
  */
 export const DEFAULT_SETTINGS: PluginSettings = {
-  _debug: false,                  // 默认禁用调试模式
+  debug: false,                  // 默认禁用调试模式
   uploadByClipSwitch: true,       // 默认启用剪贴板自动上传
   uploadAttachmentsSwitch: true,  // 默认启用附件自动上传
   uploader: "LskyPro-v2",         // 默认使用V2版本上传器
@@ -44,6 +45,7 @@ export const DEFAULT_SETTINGS: PluginSettings = {
   newWorkBlackDomains: "",        // 默认无黑名单域名
   deleteSource: false,            // 默认不删除源文件
   concurrencyMode: "medium",      // 默认中等并发模式
+  language: "auto",               // 默认自动语言
 }
 
 export const getSettingLabel = (key: keyof PluginSettings): string => {
@@ -181,7 +183,7 @@ export class SettingTab extends PluginSettingTab {
       );
       
     // 根据版本显示对应的存储ID设置
-    if (this.plugin.settings.uploader === 'LskyPro-V2') {
+    if (this.plugin.settings.uploader === 'LskyPro-v2') {
       new Setting(containerEl)
       .setName(t('settings.storageId'))
       .setDesc(t('settings.storageId.desc'))
@@ -196,7 +198,7 @@ export class SettingTab extends PluginSettingTab {
             this.plugin.uploader?.updateSetting("storage_id", key);
           })
       );
-    } else if (this.plugin.settings.uploader === 'LskyPro-V1') {
+    } else if (this.plugin.settings.uploader === 'LskyPro-v1') {
       new Setting(containerEl)
       .setName(t('settings.strategyId'))
       .setDesc(t('settings.strategyId.desc'))
@@ -278,6 +280,51 @@ export class SettingTab extends PluginSettingTab {
             new Notice(message);
             // 重新初始化上传器以应用新并发模式
             this.plugin.uploader?.updateSetting("concurrencyMode", value);
+          });
+      });
+
+    new Setting(containerEl)
+      .setName(t('settings.debugMode'))
+      .setDesc(t('settings.debugMode.desc'))
+      .addToggle(toggle =>
+        toggle
+          .setValue(this.plugin.settings.debug)
+          .onChange(async value => {
+            this.plugin.settings.debug = value;
+            await this.plugin.saveSettings();
+            // 直接更新调试模式状态
+            debugState.enabled = value;
+            if (value) {
+              new Notice(t('settings.debugMode.enabled'));
+            } else {
+              new Notice(t('settings.debugMode.disabled'));
+            }
+          })
+      );
+
+    new Setting(containerEl)
+      .setName(t('settings.language'))
+      .setDesc(t('settings.language.desc'))
+      .addDropdown(dropdown => {
+        dropdown
+          .addOption('auto', 'Auto')
+          .addOption('en', 'English')
+          .addOption('zh-cn', '简体中文')
+          .addOption('zh-tw', '繁體中文')
+          .setValue(this.plugin.settings.language)
+          .onChange(async (value: string) => {
+            this.plugin.settings.language = value;
+            await this.plugin.saveSettings();
+            try {
+              const { setLanguage } = await import('./lang/i18n');
+              setLanguage(value.toLowerCase(), this.app);
+              dbg(t('settings.language.switched'), value);
+              new Notice(t('settings.language.switched') + ' '  + languageName[value]);
+              this.display(); 
+            } catch (e) {
+              new Notice(t('settings.language.failed'));
+              error(t('settings.language.failed', + ':' + e));
+            }
           });
       });
 

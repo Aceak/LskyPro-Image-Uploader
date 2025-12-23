@@ -70,6 +70,7 @@ export default {
   "upload.clipboardEmpty": "剪貼簿中未發現圖片文件",
   "upload.clipboardFailed": "從剪貼簿上傳圖片失敗",
   "upload.exception": "上傳異常",
+  "upload.v2.storageIdRequired": "LskyPro v2 需要配置儲存 ID",
 
   // 上傳結果匯總
   "upload.summary.completed": "上傳完成（成功 {{successCount}} / 共 {{total}}，失敗 {{failedCount}}）",
@@ -141,6 +142,16 @@ export default {
   "settings.language.desc": "選擇插件語言。“自動”將跟隨 Obsidian 的介面語言。",
   "settings.language.switched": "語言已切換為",
   "settings.language.failed": "語言切換失敗",
+
+  // 除錯模式
+  "settings.debugMode": "除錯模式",
+  "settings.debugMode.desc": "開啟上傳請求和錯誤的詳細除錯日誌",
+  "settings.debugMode.enabled": "除錯模式已開啟",
+  "settings.debugMode.disabled": "除錯模式已關閉",
+
+  // 忽略 SSL 錯誤
+  "settings.ignoreSSL": "忽略 SSL 錯誤",
+  "settings.ignoreSSL.desc": "在連接伺服器時忽略 SSL 錯誤",
 
   // 設定標籤
   "setting.updateConfig": "更新配置:",

@@ -53,7 +53,7 @@ function parseUploadResult(response: LskyApiResponse): ParsedResult {
   const { status, message, data } = response;
 
   // 判断上传是否成功
-  const success = 
+  const success =
     status === true ||
     status === "success" ||
     status === 200;
@@ -145,8 +145,11 @@ export class LskyProUploader {
     // 根据版本添加不同的参数
     if (this.version === "v1" && this.settings.strategy_id) {
       formData.append("strategy_id", this.settings.strategy_id);
-    } else if (this.version === "v2" && this.settings.storage_id) {
-      formData.append("storage_id", this.settings.storage_id);
+    } else if (this.version === "v2") {
+      // V2版本必需参数：storage_id
+      if (this.settings.storage_id) {
+        formData.append("storage_id", this.settings.storage_id);
+      }
     }
 
     return {
@@ -162,11 +165,20 @@ export class LskyProUploader {
    * @returns 封装后的上传结果
    */
   private async uploadRawFile(file: File): Promise<UploadResult> {
-    dbg(t("main.uploadRawFile"))
+    
+    
     try {
+      // 验证V2版本必需参数
+      if (this.version === "v2" && !this.settings.storage_id) {
+        return { success: false, msg: t("upload.v2.storageIdRequired") };
+      }
+
       // 获取请求选项
       const requestOptions = this.getRequestOptions(file);
       const { body, contentType } = await buildMultipartBody(requestOptions.body);
+      
+      dbg("[Upload] Request Body:", body);
+      
       // 发送请求到LskyPro服务器
       const res = await requestUrl({
         url: this.lskyUrl,
@@ -178,10 +190,8 @@ export class LskyProUploader {
         }
       });
 
-      dbg(res)
-      dbg(res.status)
-      dbg(res.headers)
-      dbg(res.text)
+      dbg("[Upload] Response Status:", res.status);
+      dbg("[Upload] Response Body:", res.text);
 
       // 检查HTTP响应状态
       if (res.status < 200 || res.status >= 300) {
@@ -213,13 +223,21 @@ export class LskyProUploader {
 
       if (err instanceof Error) {
         msg = err.message;
+        dbg("[Upload] Error Message:", err.message);
+        if (err.stack) {
+          dbg("[Upload] Stack Trace:", err.stack);
+        }
       } else if (typeof err === 'string') {
         msg = err;
+        dbg("[Upload] Error Message:", err);
       } else {
         try {
-          msg = JSON.stringify(err);
+          const errStr = JSON.stringify(err, null, 2);
+          msg = errStr;
+          dbg("[Upload] Error Details:", errStr);
         } catch {
-          // 保底不处理
+          msg = t('upload.requestException');
+          dbg("[Upload] Error Message:", msg);
         }
       }
 
@@ -284,6 +302,11 @@ export class LskyProUploader {
   async uploadFiles(inputs: Array<File | string>): Promise<UploadResult> {
     dbg(t("main.uploadFiles"))
     try {
+      // 验证V2版本必需参数
+      if (this.version === "v2" && !this.settings.storage_id) {
+        return { success: false, msg: t("upload.v2.storageIdRequired") };
+      }
+
       // 将所有输入转换为File对象
       const files = await Promise.all(
         inputs.map(async (input) =>
@@ -323,6 +346,11 @@ export class LskyProUploader {
     const total = inputs.length;
     let current = 0;
     let successCount = 0;
+
+    // 验证V2版本必需参数
+    if (this.version === "v2" && !this.settings.storage_id) {
+      return { success: false, msg: t("upload.v2.storageIdRequired") };
+    }
 
     // 队列任务
     const queue = async (input: File | string) => {
@@ -388,6 +416,11 @@ export class LskyProUploader {
   async uploadFromClipboard(evt: ClipboardEvent): Promise<UploadResult> {
     dbg(t("main.uploadFromClipboard"))
     try {
+      // 验证V2版本必需参数
+      if (this.version === "v2" && !this.settings.storage_id) {
+        return { success: false, msg: t("upload.v2.storageIdRequired") };
+      }
+
       const file = evt.clipboardData?.files?.[0];
       if (!file) throw new Error(t("upload.clipboardEmpty"));
 

@@ -115,31 +115,12 @@ Command: `Download all images`.
 
 ### Enable Debug Mode
 Need to set the developer mode output mode to `Detailed` first, then you can enable debug info.
-#### Method 1: Enable via configuration file (Recommended)
-1. Open the plugin data directory:  
-```
-.obsidian/plugins/lskypro-upload-v2/data.json
-```
-2. Add or modify the following field:  
-```json
-"_debug": true
- ```
-3. Save the file and reload the plugin or restart Obsidian to enable debug mode.
-
-#### Method 2: Temporarily enable (without modifying files)
-1. Open the console (`Ctrl + Shift + I` → Console);  
-2. Enter the following command:  
-```js
-window.__LSKY_RUNTIME_DEBUG__ = true
-```
-3. Reload the plugin to automatically enter debug mode.
-
 ---
 
 ## 🔍 LskyPro Version Notes
 
 This plugin is based on [NekoTarou/lskypro-auto-upload](https://github.com/NekoTarou/lskypro-auto-upload.git),  
-with enhanced **LskyPro V2 API** support and automatic response parsing.  
+with **LskyPro V2 API** support and automatic response parsing.  
 Reference: [Lsky Pro API Documentation](https://lsky-pro.apifox.cn).
 
 | Field | LskyPro V1 | LskyPro V2 |

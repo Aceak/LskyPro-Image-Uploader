@@ -18,7 +18,6 @@
 - **智能处理**：可选择是否处理网络图片、自动删除源文件等  
 - **多语言支持**：内置中英文切换，适配不同用户需求  
 
-
 ---
 
 ## 📋 快速开始
@@ -116,30 +115,12 @@
 
 ### 启用调试模式
 需先将开发者模式输出模式设置为 `详细`，才能正常开启调试模式。
-#### 方式一：通过配置文件启用（推荐）
-1. 打开插件数据目录：  
-```
-.obsidian/plugins/lskypro-upload-v2/data.json
-```
-2. 在文件中添加或修改以下字段：  
-```json
-"_debug": true
-```
-3. 保存文件后，重新加载插件或重启 Obsidian ，即可开启调试模式。
-
-#### 方式二：临时启用（不修改文件）
-1. 打开控制台（`Ctrl + Shift + I` → Console）；  
-2. 输入以下命令：  
-```js
-window.__LSKY_RUNTIME_DEBUG__ = true
-```
-3. 重新加载插件后即自动进入调试模式。
 ---
 
 ## 🔍 LskyPro 版本说明
 
 插件基于 [NekoTarou/lskypro-auto-upload](https://github.com/NekoTarou/lskypro-auto-upload.git) 改造，  
-增强了对 **LskyPro V2 API** 的支持与自动解析机制。  
+添加了对 **LskyPro V2 API** 的支持与自动解析机制。  
 参考文档：[Lsky Pro 官方 API 文档](https://lsky-pro.apifox.cn)。
 
 | 配置项 | LskyPro V1 | LskyPro V2 |
@@ -147,6 +128,7 @@ window.__LSKY_RUNTIME_DEBUG__ = true
 | 存储配置 | 可选（若仅一个策略可省略） | 必填（需填写正确存储 ID） |
 | Token 授权 | 用户令牌 | 用户令牌 |
 | API 路径 | `/api/v1/upload` | `/api/v2/upload` |
+
 
 ---
 

@@ -215,15 +215,19 @@ function logPrefix(level: string): string {
   return `[Lsky-${level.toUpperCase()} ${now}]`;
 }
 
-// 调试输出函数(仅当 window.__LSKY_DEBUG__ === true 时才输出日志)
+// 创建可修改的调试状态对象
+export const debugState = {
+  enabled: false
+};
+
+// 调试输出函数
 export function dbg(...args: unknown[]): void {
   try {
-    const win = window as unknown as { __LSKY_DEBUG__?: boolean };
-    if (typeof win.__LSKY_DEBUG__ === "boolean" && win.__LSKY_DEBUG__) {
+    if (debugState.enabled) {
       console.debug(logPrefix("debug"), ...args);
     }
   } catch {
-    // 忽略环境不支持 window 或 console 的情况
+    // 忽略环境不支持 console 的情况
   }
 }
 

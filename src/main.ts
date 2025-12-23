@@ -23,6 +23,7 @@ import {
   dbg,
   warn,
   error,
+  debugState,
 } from "./utils";
 import { LskyProUploader } from "./upload"; // 统一支持v1和v2版本的上传器
 import Helper from "./helper";
@@ -43,13 +44,7 @@ interface PastedImageItem {
   name: string;
 }
 
-declare global {
-  interface Window {
-    __LSKY_DEBUG__?: boolean;
-    __LSKY_RUNTIME_DEBUG__?: boolean;
-  }
-}
-export {};
+
 
 export default class imageAutoUploadPlugin extends Plugin {
   settings: PluginSettings;
@@ -61,25 +56,14 @@ export default class imageAutoUploadPlugin extends Plugin {
     const loaded = await this.loadData();
     this.settings = Object.assign({}, DEFAULT_SETTINGS, loaded);
 
-    if (typeof this.settings._debug !== "boolean") {
-      this.settings._debug = false;
+    if (typeof this.settings.debug !== "boolean") {
+      this.settings.debug = false;
     }
 
-    window.__LSKY_DEBUG__ = this.settings._debug === true;
+    // 直接更新调试模式状态
+    debugState.enabled = this.settings.debug;
 
-    if (!Object.getOwnPropertyDescriptor(window, "__LSKY_RUNTIME_DEBUG__")) {
-      Object.defineProperty(window, "__LSKY_RUNTIME_DEBUG__", {
-        configurable: true,
-        get() {
-          return window.__LSKY_DEBUG__;
-        },
-        set(value: boolean) {
-          window.__LSKY_DEBUG__ = !!value;
-        },
-      });
-    }
-
-    if (window.__LSKY_DEBUG__) {
+    if (this.settings.debug) {
       console.debug("[LskyPro]"+ t("main.debugEnabled"));
     }
   }

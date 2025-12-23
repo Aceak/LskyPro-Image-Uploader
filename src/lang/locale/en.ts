@@ -71,6 +71,7 @@ export default {
   "upload.clipboardEmpty": "Clipboard does not contain any image file",
   "upload.clipboardFailed": "Failed to upload image from clipboard",
   "upload.exception": "Upload exception",
+  "upload.v2.storageIdRequired": "LskyPro v2 requires storage ID",
 
   // Completed summary
   "upload.summary.completed": "Upload completed (success {{successCount}} / {{total}}, failed {{failedCount}})",
@@ -142,6 +143,16 @@ export default {
   "settings.language.desc": "Select the plugin language.",
   "settings.language.switched": "Language switched to",
   "settings.language.failed": "Language switch failed",
+
+  // Debug mode
+  "settings.debugMode": "Debug mode",
+  "settings.debugMode.desc": "Enable detailed debug logging for upload requests and errors",
+  "settings.debugMode.enabled": "Debug mode enabled",
+  "settings.debugMode.disabled": "Debug mode disabled",
+
+  // Ignore SSL errors
+  "settings.ignoreSSL": "Ignore SSL errors",
+  "settings.ignoreSSL.desc": "Ignore SSL errors when connecting to the server",
 
   // Setting labels
   "setting.updateConfig": "Update config: ",

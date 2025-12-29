@@ -47,8 +47,44 @@ export default {
     "偵測到網絡圖片：{{count}}",
     "成功下載：{{success}}",
     "已略過：{{skipped}}",
-    "下載失敗：{{failed}}"
+    "下載失敗：{{failed}}",
   ].join("\n"),
+  "download.debug.start": "開始下載圖片：{{url}}",
+  "download.debug.failed": "下載失敗：{{error}}",
+  "download.debug.savePath": "儲存路徑：{{path}}",
+  "download.debug.success": "圖片儲存成功：{{path}}",
+  "download.debug.exception": "下載異常：{{url}} {{error}}",
+  "download.debug.startAll": "開始下載所有圖片",
+  "download.debug.replaceReferences":
+    "開始替換 Markdown 圖片引用: {{count}} 個圖片",
+  "download.debug.originalContentLength":
+    "原始 Markdown 內容長度: {{length}} 字元",
+  "download.debug.replaceSuccess":
+    "替換圖片引用 [ {{index}} / {{total}} ]: {{source}} → {{target}}",
+  "download.debug.replaceFailed":
+    "未找到匹配項 [ {{index}} / {{total}} ]: {{source}}",
+  "download.debug.updateComplete":
+    "Markdown 內容更新完成，共替換 {{count}} 個圖片引用",
+  "download.debug.updatedContentLength":
+    "更新後 Markdown 內容長度: {{length}} 字元",
+  "download.debug.report":
+    "下載報告 - 總數: {{count}}, 成功: {{success}}, 略過: {{skipped}}, 失敗: {{failed}}",
+  "download.debug.folderPath": "資料夾路徑: {{path}}",
+  "download.debug.originalFilename": "原始檔案名: {{filename}}",
+  "download.debug.responseStatus": "HTTP 回應狀態碼: {{status}}",
+  "download.debug.downloadFailed": "下載失敗: {{message}}",
+  "download.debug.safeFilename": "清理後的檔案名: {{filename}}",
+  "download.debug.pathConditions": "路徑條件判斷 - folderPath: {{folderPath}}",
+  "download.debug.pathConditionCheck":
+    "folderPath === '{{condition}}': {{result}}",
+  "download.debug.pathConditionLength": "folderPath.length: {{length}}",
+  "download.debug.pathConditionChar": "folderPath.charCodeAt(0): {{code}}",
+  "download.debug.rootPathHandling":
+    "根目錄/空目錄處理，直接使用檔案名: {{path}}",
+  "download.debug.nonRootPathHandling": "非根目錄處理，構建完整路徑: {{path}}",
+  "download.debug.finalSavePath": "最終儲存路徑: {{path}}",
+  "download.debug.responseSize": "回應數據大小: {{size}} 位元組",
+  "download.debug.downloadException": "下載異常: {{message}}",
 
   /* ===============================
    * 上傳流程
@@ -71,9 +107,11 @@ export default {
   "upload.clipboardFailed": "從剪貼簿上傳圖片失敗",
   "upload.exception": "上傳異常",
   "upload.v2.storageIdRequired": "LskyPro v2 需要配置儲存 ID",
+  "upload.allFiles": "上傳所有文件",
 
   // 上傳結果匯總
-  "upload.summary.completed": "上傳完成（成功 {{successCount}} / 共 {{total}}，失敗 {{failedCount}}）",
+  "upload.summary.completed":
+    "上傳完成（成功 {{successCount}} / 共 {{total}}，失敗 {{failedCount}}）",
   "upload.summary.allCompleted": "全部圖片上傳成功，共上傳 {{total}} 張",
 
   /* ===============================
@@ -87,6 +125,48 @@ export default {
   "response.someFailed": "部分文件上傳失敗",
   "response.success": "上傳成功",
   "response.failed": "上傳失敗",
+
+  /* ===============================
+   * 附件路徑
+   * =============================== */
+  "attachmentPath.debug.original": "原始assetFolder: {{path}}",
+  "attachmentPath.debug.noActiveFile": "未找到活動文件",
+  "attachmentPath.debug.activeFile": "活動文件: {{path}}",
+  "attachmentPath.debug.activeFileParent": "活動文件父目錄: {{path}}",
+  "attachmentPath.debug.emptyAssetFolder":
+    "assetFolder為空，返回活動文件父目錄: {{path}}",
+  "attachmentPath.debug.removeDotSlash": "移除./後的相對路徑: {{path}}",
+  "attachmentPath.debug.emptyRelativePath":
+    "相對路徑為空，返回父目錄: {{path}}",
+  "attachmentPath.debug.fullPath": "最終返回路徑: {{path}}",
+  "attachmentPath.debug.final": "最終附件路徑: {{path}}",
+
+  /* ===============================
+   * 上傳調試
+   * =============================== */
+  "upload.debug.requestBody": "上傳請求體",
+  "upload.debug.responseStatus": "上傳回應狀態碼: {{status}}",
+  "upload.debug.responseBody": "上傳回應體",
+  "upload.debug.errorMessage": "上傳錯誤訊息: {{message}}",
+  "upload.debug.stackTrace": "上傳錯誤堆疊資訊",
+  "upload.debug.errorDetails": "上傳錯誤詳細資訊",
+
+  /* ===============================
+   * Helper
+   * =============================== */
+  "helper.getAllFiles.start": "開始獲取所有圖片文件",
+  "helper.getAllFiles.noEditor": "未找到編輯器實例",
+  "helper.getAllFiles.complete": "獲取完成，共返回 {{count}} 個圖片",
+  "helper.getImageLink.start": "開始提取圖片連結",
+  "helper.getImageLink.complete": "提取完成，共找到 {{count}} 個圖片連結",
+
+  /* ===============================
+   * i18n 國際化
+   * =============================== */
+  "i18n.debug.autoMode": "自動模式 -> Obsidian 語言: {{locale}}",
+  "i18n.debug.switchLanguage": "切換到語言: {{language}}",
+  "i18n.debug.activeLocale": "當前激活語言: {{locale}}",
+  "i18n.debug.loadedLocales": "已加載語言: {{locales}}",
 
   /* ===============================
    * 設定面板

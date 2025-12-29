@@ -19,7 +19,8 @@ export default {
   "main.networkUploadError": "Network image upload failed",
   "main.failedRequest": "Failed request",
   "main.uploadStart": "Found {{count}} image files, starting upload",
-  "main.pasteNetworkImages": "Detected {{count}} network image(s), start uploading",
+  "main.pasteNetworkImages":
+    "Detected {{count}} network image(s), start uploading",
   "main.autoUploadClipboardDisabled": "Auto upload clipboard is disabled",
   "main.autoUploadAttachmentsDisabled": "Auto upload attachments is disabled",
   "main.debugMode": "Debug mode is enabled",
@@ -40,7 +41,8 @@ export default {
    * DOWNLOAD PROCESS
    * =============================== */
   "download.failed": "Download failed",
-  "download.failedNotice": "Download failed, please check console for more information",
+  "download.failedNotice":
+    "Download failed, please check console for more information",
   "download.noExtension": "No file extension in URL",
   "download.unsupportedType": "Unsupported image type",
   "download.exception": "Download exception",
@@ -48,8 +50,46 @@ export default {
     "Network images detected: {{count}}",
     "Successfully downloaded: {{success}}",
     "Skipped: {{skipped}}",
-    "Failed: {{failed}}"
+    "Failed: {{failed}}",
   ].join("\n"),
+  "download.debug.start": "Start downloading image: {{url}}",
+  "download.debug.failed": "Download failed: {{error}}",
+  "download.debug.savePath": "Save path: {{path}}",
+  "download.debug.success": "Image saved successfully: {{path}}",
+  "download.debug.exception": "Download exception: {{url}} {{error}}",
+  "download.debug.startAll": "Start downloading all images",
+  "download.debug.replaceReferences":
+    "Start replacing Markdown image references: {{count}} images",
+  "download.debug.originalContentLength":
+    "Original Markdown content length: {{length}} characters",
+  "download.debug.replaceSuccess":
+    "Replace image reference [ {{index}} / {{total}} ]: {{source}} → {{target}}",
+  "download.debug.replaceFailed":
+    "No match found [ {{index}} / {{total}} ]: {{source}}",
+  "download.debug.updateComplete":
+    "Markdown content updated, replaced {{count}} image references",
+  "download.debug.updatedContentLength":
+    "Updated Markdown content length: {{length}} characters",
+  "download.debug.report":
+    "Download report - Total: {{count}}, Success: {{success}}, Skipped: {{skipped}}, Failed: {{failed}}",
+  "download.debug.folderPath": "Folder path: {{path}}",
+  "download.debug.originalFilename": "Original filename: {{filename}}",
+  "download.debug.responseStatus": "HTTP response status code: {{status}}",
+  "download.debug.downloadFailed": "Download failed: {{message}}",
+  "download.debug.safeFilename": "Cleaned filename: {{filename}}",
+  "download.debug.pathConditions":
+    "Path condition check - folderPath: {{folderPath}}",
+  "download.debug.pathConditionCheck":
+    "folderPath === '{{condition}}': {{result}}",
+  "download.debug.pathConditionLength": "folderPath.length: {{length}}",
+  "download.debug.pathConditionChar": "folderPath.charCodeAt(0): {{code}}",
+  "download.debug.rootPathHandling":
+    "Root/empty directory handling, using filename directly: {{path}}",
+  "download.debug.nonRootPathHandling":
+    "Non-root directory handling, building full path: {{path}}",
+  "download.debug.finalSavePath": "Final save path: {{path}}",
+  "download.debug.responseSize": "Response data size: {{size}} bytes",
+  "download.debug.downloadException": "Download exception: {{message}}",
 
   /* ===============================
    * UPLOAD PROCESS
@@ -57,7 +97,8 @@ export default {
   "upload.start": "Found {{count}} image files, starting upload",
   "upload.complete": "Image upload completed",
   "upload.failed": "Image upload failed",
-  "upload.failedNotice": "An error occurred during upload, please check the console log",
+  "upload.failedNotice":
+    "An error occurred during upload, please check the console log",
   "upload.someFailed": "Some image uploads failed",
   "upload.error": "Upload error",
   "upload.uploading": "Uploading file...",
@@ -72,10 +113,13 @@ export default {
   "upload.clipboardFailed": "Failed to upload image from clipboard",
   "upload.exception": "Upload exception",
   "upload.v2.storageIdRequired": "LskyPro v2 requires storage ID",
+  "upload.allFiles": "Upload all files",
 
   // Completed summary
-  "upload.summary.completed": "Upload completed (success {{successCount}} / {{total}}, failed {{failedCount}})",
-  "upload.summary.allCompleted": "All uploads completed successfully, uploaded {{total}} images",
+  "upload.summary.completed":
+    "Upload completed (success {{successCount}} / {{total}}, failed {{failedCount}})",
+  "upload.summary.allCompleted":
+    "All uploads completed successfully, uploaded {{total}} images",
 
   /* ===============================
    * RESPONSE & VALIDATION
@@ -90,21 +134,71 @@ export default {
   "response.failed": "Upload failed",
 
   /* ===============================
+   * ATTACHMENT PATH
+   * =============================== */
+  "attachmentPath.debug.original": "Original assetFolder: {{path}}",
+  "attachmentPath.debug.noActiveFile": "No active file found",
+  "attachmentPath.debug.activeFile": "Active file: {{path}}",
+  "attachmentPath.debug.activeFileParent":
+    "Active file parent directory: {{path}}",
+  "attachmentPath.debug.emptyAssetFolder":
+    "assetFolder is empty, returning active file parent directory: {{path}}",
+  "attachmentPath.debug.removeDotSlash":
+    "Relative path after removing ./: {{path}}",
+  "attachmentPath.debug.emptyRelativePath":
+    "Relative path is empty, returning parent directory: {{path}}",
+  "attachmentPath.debug.fullPath": "Final returned path: {{path}}",
+  "attachmentPath.debug.final": "Final attachment path: {{path}}",
+
+  /* ===============================
+   * UPLOAD DEBUG
+   * =============================== */
+  "upload.debug.requestBody": "Upload request body",
+  "upload.debug.responseStatus": "Upload response status code: {{status}}",
+  "upload.debug.responseBody": "Upload response body",
+  "upload.debug.errorMessage": "Upload error message: {{message}}",
+  "upload.debug.stackTrace": "Upload error stack trace",
+  "upload.debug.errorDetails": "Upload error details",
+
+  /* ===============================
+   * HELPER
+   * =============================== */
+  "helper.getAllFiles.start": "Start getting all image files",
+  "helper.getAllFiles.noEditor": "No editor instance found",
+  "helper.getAllFiles.complete":
+    "Retrieval completed, returned {{count}} images",
+  "helper.getImageLink.start": "Start extracting image links",
+  "helper.getImageLink.complete":
+    "Extraction completed, found {{count}} image links",
+
+  /* ===============================
+   * I18N DEBUG
+   * =============================== */
+  "i18n.debug.autoMode": "Auto mode -> Obsidian language: {{locale}}",
+  "i18n.debug.switchLanguage": "Switching to language: {{language}}",
+  "i18n.debug.activeLocale": "Current active language: {{locale}}",
+  "i18n.debug.loadedLocales": "Loaded languages: {{locales}}",
+
+  /* ===============================
    * SETTINGS PANEL
    * =============================== */
   "settings.title": "Plugin settings",
 
   // General upload behavior
   "settings.autoUploadClipboard": "Auto upload from clipboard",
-  "settings.autoUploadClipboard.desc": "Automatically upload images from clipboard",
+  "settings.autoUploadClipboard.desc":
+    "Automatically upload images from clipboard",
   "settings.autoUploadAttachments": "Auto upload attachments",
-  "settings.autoUploadAttachments.desc": "Automatically upload attachments when added to the vault",
+  "settings.autoUploadAttachments.desc":
+    "Automatically upload attachments when added to the vault",
 
   // Uploader configuration
   "settings.defaultUploader": "Default uploader",
-  "settings.defaultUploader.desc": "Select default uploader API (LskyPro v1 / v2)",
+  "settings.defaultUploader.desc":
+    "Select default uploader API (LskyPro v1 / v2)",
   "settings.serverDomain": "LskyPro server domain",
-  "settings.serverDomain.desc": "Domain of your LskyPro server (without API path)",
+  "settings.serverDomain.desc":
+    "Domain of your LskyPro server (without API path)",
   "settings.serverDomain.placeholder": "https://example.com",
   "settings.token": "LskyPro token",
   "settings.token.desc": "API token for LskyPro authentication",
@@ -118,13 +212,16 @@ export default {
 
   // Network image behavior
   "settings.workOnNetwork": "Work on network images",
-  "settings.workOnNetwork.desc": "Process and re-upload images from remote URLs",
+  "settings.workOnNetwork.desc":
+    "Process and re-upload images from remote URLs",
   "settings.blacklist": "Network domain blacklist",
   "settings.blacklist.desc": "Domains to exclude (comma-separated)",
 
   // Clipboard mixed content
-  "settings.clipboardMixed": "Upload when clipboard has image and text together",
-  "settings.clipboardMixed.desc": "Handle mixed clipboard content (text + image)",
+  "settings.clipboardMixed":
+    "Upload when clipboard has image and text together",
+  "settings.clipboardMixed.desc":
+    "Handle mixed clipboard content (text + image)",
 
   // Source cleanup
   "settings.deleteSource": "Delete source file after upload",
@@ -132,7 +229,8 @@ export default {
 
   // Concurrency control
   "settings.concurrency": "Upload concurrency",
-  "settings.concurrency.desc": "Number of concurrent uploads. Recommended to adjust based on network speed and image bed performance.",
+  "settings.concurrency.desc":
+    "Number of concurrent uploads. Recommended to adjust based on network speed and image bed performance.",
   "settings.concurrency.low": "Low",
   "settings.concurrency.medium": "Medium",
   "settings.concurrency.high": "High",
@@ -146,7 +244,8 @@ export default {
 
   // Debug mode
   "settings.debugMode": "Debug mode",
-  "settings.debugMode.desc": "Enable detailed debug logging for upload requests and errors",
+  "settings.debugMode.desc":
+    "Enable detailed debug logging for upload requests and errors",
   "settings.debugMode.enabled": "Debug mode enabled",
   "settings.debugMode.disabled": "Debug mode disabled",
 

@@ -342,7 +342,7 @@ export class LskyProUploader {
     concurrency: number = 3
   ): Promise<UploadResult> {
     dbg(t("main.uploadWithLimit"))
-    const results: UploadResult[] = [];
+    const results: (UploadResult | null)[] = new Array(inputs.length).fill(null);
     const total = inputs.length;
     let current = 0;
     let successCount = 0;
@@ -353,10 +353,10 @@ export class LskyProUploader {
     }
 
     // 队列任务
-    const queue = async (input: File | string) => {
+    const queue = async (input: File | string, index: number) => {
       try {
         const result = await this.uploadSingleFile(input);
-        results.push(result);
+        results[index] = result;
         current++;
         if (result.success) successCount++;
         new Notice(`${t('upload.progress')}: ${current}/${total}`);
@@ -365,7 +365,7 @@ export class LskyProUploader {
           ? err.message
           : t("upload.exception");
 
-        results.push({ success: false, msg: message });
+        results[index] = { success: false, msg: message };
         current++;
         new Notice(`${t('upload.exception')}: ${current}/${total}`);
       }
@@ -373,8 +373,9 @@ export class LskyProUploader {
 
     const running = new Set<Promise<void>>();
     
-    for (const item of inputs) {
-      const task = queue(item).finally(() => {
+    for (let i = 0; i < inputs.length; i++) {
+      const item = inputs[i];
+      const task = queue(item, i).finally(() => {
         running.delete(task);
       });
 
@@ -388,7 +389,8 @@ export class LskyProUploader {
     await Promise.all(running);
 
     // 汇总结果
-    const failed = results.filter((r) => !r.success);
+    const validResults = results.filter((r): r is UploadResult => r !== null);
+    const failed = validResults.filter((r) => !r.success);
     if (failed.length > 0) {
       return {
         success: false,
@@ -397,13 +399,13 @@ export class LskyProUploader {
           total,
           failedCount: failed.length,
         }),
-        result: results.filter(r => r.success).map(r => r.url),
+        result: validResults.filter(r => r.success).map(r => r.url),
       };
     }
 
     return {
       success: true,
-      result: results.map(r => r.url),
+      result: validResults.map(r => r.url),
       msg: t('upload.summary.allCompleted', { total }),
     };
   }

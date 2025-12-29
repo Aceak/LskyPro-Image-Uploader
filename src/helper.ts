@@ -1,15 +1,16 @@
 // helper.ts
 import { MarkdownView, App } from "obsidian";
+import { dbg } from "./utils";
 
 /**
  * 图片信息接口
  * 用于存储从 Markdown 文档中提取的图片信息
  */
 interface Image {
-  path: string;    // 图片路径
+  path: string; // 图片路径
   obspath: string; // Obsidian 中的路径
-  name: string;    // 图片名称
-  source: string;  // 原始 Markdown 链接文本
+  name: string; // 图片名称
+  source: string; // 原始 Markdown 链接文本
 }
 
 /**
@@ -22,7 +23,7 @@ const REGEX_FILE = /!\[([^\]]*)\]\(([^)]+)\)/g;
  * 正则表达式 - 匹配 Obsidian Wiki 风格的图片链接
  * 格式：![[image path|optional alias]]
  */
-const REGEX_WIKI_FILE = /!\?\[\[(.*?)(\s\|.*?)?\]\]/g;
+const REGEX_WIKI_FILE = /!\[\[(.*?)(\s\|.*?)?\]\]/g;
 
 /**
  * Helper 类 - 提供各种辅助方法
@@ -45,7 +46,10 @@ export default class Helper {
    * @param defaultValue 默认值，当键不存在时返回
    * @returns 元数据值或默认值
    */
-  getFrontmatterValue<T = unknown>(key: string, defaultValue?: T): T | undefined {
+  getFrontmatterValue<T = unknown>(
+    key: string,
+    defaultValue?: T
+  ): T | undefined {
     const file = this.app.workspace.getActiveFile();
     if (!file) return undefined;
 
@@ -89,16 +93,17 @@ export default class Helper {
    */
   setValue(value: string) {
     const editor = this.getEditor();
-    // 保存当前滚动位置和光标位置
+    // 保存当前滚动位置
     const { left, top } = editor.getScrollInfo();
-    const position = editor.getCursor();
 
     // 设置新内容
     editor.setValue(value);
-    
-    // 恢复滚动位置和光标位置
+
+    // 恢复滚动位置
     editor.scrollTo(left, top);
-    editor.setCursor(position);
+
+    // 不要恢复光标位置，因为新内容可能更短，导致光标位置无效
+    // 保持光标在文档末尾即可
   }
 
   /**
@@ -106,11 +111,17 @@ export default class Helper {
    * @returns 图片信息数组
    */
   getAllFiles(): Image[] {
+    dbg("[helper.getAllFiles] Start to get all image files");
     const editor = this.getEditor();
+    if (!editor) {
+      dbg("[helper.getAllFiles] Not found editor instance");
+      return [];
+    }
     let value = editor.getValue();
-    return this.getImageLink(value);
+    const result = this.getImageLink(value);
+    return result;
   }
-  
+
   /**
    * 从文本内容中提取图片链接信息
    * 支持标准 Markdown 格式和 Obsidian Wiki 格式
@@ -118,6 +129,7 @@ export default class Helper {
    * @returns 图片信息数组
    */
   getImageLink(value: string): Image[] {
+    dbg("[helper.getImageLink] 开始提取图片链接");
     const matches = value.matchAll(REGEX_FILE);
     const WikiMatches = value.matchAll(REGEX_WIKI_FILE);
 
@@ -125,10 +137,12 @@ export default class Helper {
 
     // 处理标准 Markdown 格式的图片链接
     for (const match of matches) {
-      const source = match[0];  // 原始链接文本
-      let path = match[2];      // 图片路径
-      
-      if (!path) continue;
+      const source = match[0]; // 原始链接文本
+      let path = match[2]; // 图片路径
+
+      if (!path) {
+        continue;
+      }
 
       fileArray.push({
         path: path,
@@ -140,9 +154,9 @@ export default class Helper {
 
     // 处理 Obsidian Wiki 格式的图片链接
     for (const match of WikiMatches) {
-      const path = match[1];              // 图片路径
-      const source = match[0];            // 原始链接文本
-      
+      const path = match[1]; // 图片路径
+      const source = match[0]; // 原始链接文本
+
       fileArray.push({
         path: path,
         obspath: path,
@@ -150,7 +164,12 @@ export default class Helper {
         source: source,
       });
     }
-    
+
+    dbg(
+      "[helper.getImageLink] parse finish, total:",
+      fileArray.length,
+      " pictures"
+    );
     return fileArray;
   }
 
@@ -164,10 +183,10 @@ export default class Helper {
     if (blackDomains.trim() === "") {
       return false;
     }
-    
+
     // 分割黑名单域名字符串为数组
     const blackDomainList = blackDomains.split(",").filter(item => item !== "");
-    
+
     try {
       // 解析 URL 并获取域名
       const url = new URL(src);

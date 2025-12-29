@@ -44,8 +44,6 @@ interface PastedImageItem {
   name: string;
 }
 
-
-
 export default class imageAutoUploadPlugin extends Plugin {
   settings: PluginSettings;
   helper: Helper;
@@ -64,7 +62,7 @@ export default class imageAutoUploadPlugin extends Plugin {
     debugState.enabled = this.settings.debug;
 
     if (this.settings.debug) {
-      console.debug("[LskyPro]"+ t("main.debugEnabled"));
+      console.debug("[LskyPro]" + t("main.debugEnabled"));
     }
   }
 
@@ -80,24 +78,24 @@ export default class imageAutoUploadPlugin extends Plugin {
     }
   }
 
-  onunload() { }
+  onunload() {}
 
   async onload() {
     await this.loadSettings();
 
     try {
-          initLanguage(this.app, "auto");
-          dbg(t("main.languageSet"), getCurrentLanguage());
-        } catch (err) {
-          error(t("main.languageInitFailed"), err);
-        }
+      initLanguage(this.app, "auto");
+      dbg(t("main.languageSet"), getCurrentLanguage());
+    } catch (err) {
+      error(t("main.languageInitFailed"), err);
+    }
 
     this.helper = new Helper(this.app);
     this.reinitUploader();
     dbg(t("main.uploaderInit"));
 
     addIcon(
-      'upload',
+      "upload",
       `<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
         <path d="M71.638 35.336h7.77c4.292 0 7.77 3.326 7.77 7.429v42.099c0 4.105-3.478 7.431-7.77 7.431H17.249c-4.292 0-7.77-3.326-7.77-7.431V42.765c0-4.103 3.478-7.429 7.77-7.429h7.77v7.429h-7.77v42.099h62.159V42.765h-7.77v-7.429zm-22.624-25.157l18.312 17.509-5.491 5.254-8.986-8.59v35.379h-7.771V24.455l-8.884 8.492-5.492-5.255 18.31-17.511z" fill="#8a8a8a"></path>
       </svg>`
@@ -128,7 +126,6 @@ export default class imageAutoUploadPlugin extends Plugin {
 
     // 全局命令：下载所有图片
     this.addCommand({
-
       id: "download-all-images",
       name: t("main.downloadAllImages"),
       checkCallback: (checking: boolean) => {
@@ -150,7 +147,11 @@ export default class imageAutoUploadPlugin extends Plugin {
           if (!selection) return;
 
           const markdownMatch = /!\[.*\]\((.*)\)/.exec(selection);
-          if (markdownMatch && markdownMatch[1] && !markdownMatch[1].startsWith("http")) {
+          if (
+            markdownMatch &&
+            markdownMatch[1] &&
+            !markdownMatch[1].startsWith("http")
+          ) {
             this.addUploadMenu(menu, markdownMatch[1], editor);
             return;
           }
@@ -188,9 +189,9 @@ export default class imageAutoUploadPlugin extends Plugin {
             const text = clipboardData.getData("text/plain");
             const imageList = this.helper
               .getImageLink(text)
-              .filter((img) => img.path.startsWith("http"))
+              .filter(img => img.path.startsWith("http"))
               .filter(
-                (img) =>
+                img =>
                   !this.helper.hasBlackDomain(
                     img.path,
                     this.settings.newWorkBlackDomains
@@ -265,12 +266,11 @@ export default class imageAutoUploadPlugin extends Plugin {
     );
   }
 
-
   // 注册移动端自动上传事件
   registerMobileAutoUpload() {
     // 在布局准备就绪后再注册create事件，确保编辑器和工作区完全加载
     const layoutReadyEvent = this.app.workspace.onLayoutReady(() => {
-      const createEvent = this.app.vault.on("create", async (file) => {
+      const createEvent = this.app.vault.on("create", async file => {
         if (!(file instanceof TFile)) return;
         if (!isAssetTypeAnImage(file.path)) return;
 
@@ -281,7 +281,7 @@ export default class imageAutoUploadPlugin extends Plugin {
           "image-auto-upload",
           this.settings.uploadAttachmentsSwitch
         );
-        if (!allow){
+        if (!allow) {
           dbg(t("main.autoUploadAttachmentsDisabled"));
           return;
         }
@@ -293,7 +293,8 @@ export default class imageAutoUploadPlugin extends Plugin {
             const editor = this.helper.getEditor();
             if (!editor) return;
             editor.replaceSelection(`![](${res.url})`);
-            if (this.settings.deleteSource) await this.app.fileManager.trashFile(file);
+            if (this.settings.deleteSource)
+              await this.app.fileManager.trashFile(file);
             new Notice(t("upload.success"));
           } else {
             new Notice(t("upload.failedNotice"));
@@ -305,13 +306,11 @@ export default class imageAutoUploadPlugin extends Plugin {
       // 注册create事件
       this.registerEvent(createEvent);
     });
-    // 注册onLayoutReady事件
-    this.registerEvent(layoutReadyEvent as any);
   }
 
   // 添加上传菜单到上下文菜单
   addUploadMenu(menu: Menu, imageUrl: string, editor: Editor) {
-    menu.addItem((item) => {
+    menu.addItem(item => {
       item
         .setTitle(t("main.uploadImage"))
         .setIcon("upload")
@@ -336,27 +335,34 @@ export default class imageAutoUploadPlugin extends Plugin {
 
   // 下载所有图片文件
   async downloadAllImageFiles() {
-    const fileArray = this.helper.getAllFiles();
-    const folderPathAbs = this.getAttachmentFolderPath();
+    dbg("[downloadAllImageFiles] 开始下载所有图片");
 
-    if (!folderPathAbs) {
+    const fileArray = this.helper.getAllFiles();
+    const folderPath = this.getAttachmentFolderPath();
+
+    if (!folderPath) {
       new Notice(t("main.noAttachmentFolder"));
+      error(t("main.noAttachmentFolder") + ":" + folderPath);
       return;
     }
 
     // 确保附件文件夹存在
-    let absFolder = this.app.vault.getAbstractFileByPath(folderPathAbs);
-    if (!absFolder) {
-      await this.app.vault.createFolder(folderPathAbs);
+    let folder = this.app.vault.getAbstractFileByPath(folderPath);
+    if (!folder) {
+      await this.app.vault.createFolder(folderPath);
     }
 
     const imageArray: { source: string; path: string }[] = [];
     let count = 0;
     let skipped = 0;
+    let successDownloaded = 0;
 
     for (const file of fileArray) {
       // 只处理网络图片
-      if (!file.path.startsWith('http')) continue;
+      if (!file.path.startsWith("http")) {
+        skipped++;
+        continue;
+      }
       count++;
 
       const url = file.path;
@@ -365,7 +371,7 @@ export default class imageAutoUploadPlugin extends Plugin {
       const match = url.match(/\.(\w+)(\?|#|$)/);
       if (!match) {
         skipped++;
-        warn(t('download.noExtension')+':'+url);
+        warn(t("download.noExtension") + ":" + url);
         continue;
       }
 
@@ -373,7 +379,7 @@ export default class imageAutoUploadPlugin extends Plugin {
       const ext = match[1].toLowerCase();
       if (!isValidImageExtension(ext)) {
         skipped++;
-        warn(t('download.unsupportedType')+':'+ext);
+        warn(t("download.unsupportedType") + ":" + ext);
         continue;
       }
 
@@ -381,44 +387,106 @@ export default class imageAutoUploadPlugin extends Plugin {
       let asset = getUrlAsset(url);
       asset = decodeURI(asset).replaceAll(/[\\/:*?"<>|]/g, "-");
 
-      // 如果文件已存在，则加随机前缀
-      const saveName = this.app.vault.getAbstractFileByPath(`${folderPathAbs}/${asset}`)
-        ? `${Math.random().toString(36).substring(2, 7)}-${asset}`
-        : asset;
+      // 如果文件已存在，直接使用原文件名
+      let fullSavePath: string;
+      if (folderPath === "" || folderPath === "/") {
+        fullSavePath = asset;
+      } else {
+        fullSavePath = `${folderPath}/${asset}`;
+      }
+      const existingFile = this.app.vault.getAbstractFileByPath(fullSavePath);
+      // 无论文件是否存在，都使用原文件名
+      const saveName = asset;
 
-      try {
-        const response = await this.download(url, folderPathAbs, saveName);
-        if (response.ok) {
-          imageArray.push({
-            source: file.source,
-            path: response.path,
-          });
+      // 如果文件已存在，跳过下载但仍然更新Markdown引用
+      if (existingFile) {
+        // 增加跳过计数
+        skipped++;
+        // 仍然将已存在的文件添加到imageArray中，以便更新Markdown引用
+        imageArray.push({
+          source: file.source,
+          path: fullSavePath,
+        });
+      } else {
+        // 文件不存在，执行下载
+        try {
+          const response = await this.download(url, folderPath, saveName);
+          if (response.ok) {
+            imageArray.push({
+              source: file.source,
+              path: response.path,
+            });
+            // 增加成功下载计数
+            successDownloaded++;
+          }
+        } catch (err) {
+          new Notice(t("download.failedNotice"));
+          error(t("download.failed") + ":" + err);
+          dbg("[downloadAllImageFiles] 下载异常:", url, err);
         }
-      } catch (err) {
-        new Notice(t('download.failedNotice'));
-        error(t('download.failed') + ':' + err);
       }
     }
 
     // 批量替换 Markdown 图片引用
+    dbg(
+      "[downloadAllImageFiles] 开始替换 Markdown 图片引用:",
+      imageArray.length,
+      "个图片"
+    );
     let value = this.helper.getValue();
-    imageArray.forEach((image) => {
-      value = value.replace(
-        image.source,
-        `![](${encodeURI(image.path)})` 
-      );
+    dbg(
+      "[downloadAllImageFiles] 原始 Markdown 内容长度:",
+      value.length,
+      "字符"
+    );
+
+    let replacedCount = 0;
+    imageArray.forEach((image, index) => {
+      const originalLength = value.length;
+      value = value.replace(image.source, `![](${encodeURI(image.path)})`);
+
+      if (value.length !== originalLength) {
+        replacedCount++;
+        dbg(
+          "[downloadAllImageFiles] 替换图片引用 [",
+          index + 1,
+          "/",
+          imageArray.length,
+          "]:",
+          image.source,
+          "→",
+          `![](${encodeURI(image.path)})`
+        );
+      } else {
+        dbg(
+          "[downloadAllImageFiles] 未找到匹配项 [",
+          index + 1,
+          "/",
+          imageArray.length,
+          "]:",
+          image.source
+        );
+      }
     });
 
     this.helper.setValue(value);
 
-    const failed = count - imageArray.length - skipped;
-    new Notice(
-      t('download.report', {
+    const failed = count - successDownloaded - skipped;
+    dbg(
+      t("download.debug.report", {
         count,
-        success: imageArray.length,
+        success: successDownloaded,
         skipped,
-        failed
-        })
+        failed,
+      })
+    );
+    new Notice(
+      t("download.report", {
+        count,
+        success: successDownloaded,
+        skipped,
+        failed,
+      })
     );
   }
 
@@ -426,69 +494,92 @@ export default class imageAutoUploadPlugin extends Plugin {
   getAttachmentFolderPath() {
     // @ts-ignore
     let assetFolder: string = this.app.vault.config.attachmentFolderPath;
-    if (!assetFolder) {
-      assetFolder = '/'
-    }
-    const activeFile = this.app.vault.getAbstractFileByPath(
-      this.app.workspace.getActiveFile()?.path
-    );
-    if (activeFile==null||!activeFile) {
+
+    dbg(t("attachmentPath.debug.original", { path: assetFolder }));
+
+    const activeFile = this.app.workspace.getActiveFile();
+    if (!activeFile) {
+      dbg(t("attachmentPath.debug.noActiveFile"));
       return null;
     }
+
     const parentPath = activeFile.parent.path;
+
+    // 如果assetFolder为空或未设置，则使用活动文件的父目录
+    if (!assetFolder || assetFolder.trim() === "") {
+      return parentPath;
+    }
+
     // 当前文件夹下的子文件夹
     if (assetFolder.startsWith("./")) {
-      assetFolder = assetFolder.substring(1);
-      let pathTem = parentPath + (assetFolder==='/'?'':assetFolder);
-      while(pathTem.startsWith('/')) {
-        pathTem = pathTem.substring(1);
+      // 移除开头的./，保留后面的路径
+      const relativePath = assetFolder.substring(2);
+
+      // 如果相对路径为空，则直接返回当前文件的父目录
+      if (!relativePath) {
+        return parentPath;
       }
-      return pathTem;
+
+      // 构建完整路径
+      const fullPath = parentPath
+        ? `${parentPath}/${relativePath}`
+        : relativePath;
+      // 确保路径不以斜杠开头
+      const finalPath = fullPath.replace(/^\//, "");
+      dbg(t("attachmentPath.debug.final", { path: finalPath }));
+      return finalPath;
     } else {
-      return assetFolder;
+      // 确保路径不以斜杠开头
+      const finalPath = assetFolder.replace(/^\//, "");
+      dbg(t("attachmentPath.debug.final", { path: finalPath }));
+      return finalPath;
     }
   }
-  
+
   // 下载带扩展名的远程图片并保存到 vault
   async download(url: string, folderPath: string, filename: string) {
+    dbg(t("download.debug.start", { url }));
+
     try {
       const response = await requestUrl({ url });
 
       // 检查状态码
       if (response.status !== 200) {
-        return { ok: false, msg: 'HTTP ${response.status}' };
-      }
-
-      // 从 URL 提取扩展名
-      const match = url.match(/\.(\w+)(\?|#|$)/);
-      if (!match) {
-        warn(t('download.noExtension')+':'+url);
-        return { ok: false, msg: t('download.noExtension') };
-      }
-
-      const ext = match[1].toLowerCase();
-
-      if (!isValidImageExtension(ext)) {
-        warn(t('download.unsupportedType')+':'+ext);
-        return { ok: false, msg: t('download.unsupportedType')+':'+ext };
+        const errorMsg = `HTTP ${response.status}`;
+        dbg(t("download.debug.failed", { error: errorMsg }));
+        return { ok: false, msg: errorMsg };
       }
 
       // 文件名清理
       const safeName = decodeURI(filename).replace(/[\\/:*?"<>|]/g, "-");
-      const savePath = `${folderPath}/${safeName}.${ext}`;
+
+      // 构建正确的路径，避免多余斜杠
+      let savePath: string;
+      if (folderPath === "" || folderPath === "/") {
+        // 如果是根目录或空目录，直接使用文件名
+        savePath = safeName;
+      } else {
+        // 否则构建完整路径
+        savePath = `${folderPath}/${safeName}`;
+      }
+      dbg(t("download.debug.savePath", { path: savePath }));
 
       // 写入 vault
       const arrayBuffer = response.arrayBuffer;
+
       await this.app.vault.createBinary(savePath, arrayBuffer, {
         ctime: Date.now(),
         mtime: Date.now(),
       });
+      dbg(t("download.debug.success", { path: savePath }));
 
-      return { ok: true, msg: 'ok', path: savePath };
+      return { ok: true, msg: "ok", path: savePath };
     } catch (err) {
       const e = err as Error;
-      error(t('download.failed')+':'+e.message);
-      return { ok: false, msg: e?.message || t('download.exception') };
+      const errorMsg = e?.message || t("download.exception");
+      dbg(t("download.debug.exception", { url, error: errorMsg }));
+      error(t("download.failed") + ":" + errorMsg);
+      return { ok: false, msg: errorMsg };
     }
   }
 
@@ -497,7 +588,7 @@ export default class imageAutoUploadPlugin extends Plugin {
     const imageList: Image[] = [];
 
     for (const match of fileArray) {
-      if (match.path.startsWith('http')) {
+      if (match.path.startsWith("http")) {
         if (this.settings.workOnNetWork) {
           if (
             !this.helper.hasBlackDomain(
@@ -536,7 +627,10 @@ export default class imageAutoUploadPlugin extends Plugin {
   private getFileMap(): Record<string, TFile> {
     const now = Date.now();
     // 如果缓存存在且未过期，直接使用
-    if (this.fileMapCache && now - this.lastCacheTime < this.CACHE_EXPIRE_TIME) {
+    if (
+      this.fileMapCache &&
+      now - this.lastCacheTime < this.CACHE_EXPIRE_TIME
+    ) {
       return this.fileMapCache;
     }
     // 否则重新构建缓存
@@ -550,7 +644,10 @@ export default class imageAutoUploadPlugin extends Plugin {
   private getFilePathMap(): Record<string, TFile> {
     const now = Date.now();
     // 如果缓存存在且未过期，直接使用
-    if (this.filePathMapCache && now - this.lastCacheTime < this.CACHE_EXPIRE_TIME) {
+    if (
+      this.filePathMapCache &&
+      now - this.lastCacheTime < this.CACHE_EXPIRE_TIME
+    ) {
       return this.filePathMapCache;
     }
     // 否则重新构建缓存
@@ -568,17 +665,20 @@ export default class imageAutoUploadPlugin extends Plugin {
 
   // upload all file
   async uploadAllFile() {
+    dbg(t("upload.allFiles"));
     let content = this.helper.getValue();
     const activeFIle = this.app.workspace.getActiveFile();
 
     if (!activeFIle) {
-      new Notice(t('main.openFileFirst'));
+      new Notice(t("main.openFileFirst"));
       return;
     }
 
     const env = getPlatformEnv(this.app);
     const basePath =
-      env === 'desktop' ? (this.app.vault.adapter as FileSystemAdapter).getBasePath() : '';
+      env === "desktop"
+        ? (this.app.vault.adapter as FileSystemAdapter).getBasePath()
+        : "";
 
     const fileMap = this.getFileMap();
     const filePathMap = this.getFilePathMap();
@@ -589,8 +689,6 @@ export default class imageAutoUploadPlugin extends Plugin {
     for (const match of fileArray) {
       const encodedUri = match.path;
 
-      if (!encodedUri.startsWith('http')) continue;
-
       const matchPath = decodeURI(encodedUri);
       const fileName = matchPath.split(/[\\/]/).pop() || "";
       let file: TFile | null = null;
@@ -600,40 +698,44 @@ export default class imageAutoUploadPlugin extends Plugin {
       }
 
       // 相对路径
-      if (!file && (matchPath.startsWith('./') || matchPath.startsWith('../'))) {
+      if (
+        !file &&
+        (matchPath.startsWith("./") || matchPath.startsWith("../"))
+      ) {
         const parentDir = activeFIle.parent?.path || "";
         let absoPath = "";
 
-        if (matchPath.startsWith('./')) {
-            absoPath = parentDir + matchPath.substring(1)
+        if (matchPath.startsWith("./")) {
+          absoPath = parentDir + matchPath.substring(1);
         } else {
-          const levelUpCount = matchPath.split('../').length-1;
+          const levelUpCount = matchPath.split("../").length - 1;
 
-          const ParentParts = parentDir.split('/'); 
-          const relativeParts = matchPath.split('/');
+          const ParentParts = parentDir.split("/");
+          const relativeParts = matchPath.split("/");
 
           const combined = [
             ...ParentParts.slice(0, -levelUpCount),
             ...relativeParts.slice(levelUpCount),
           ];
 
-          absoPath = combined.join('/');
+          absoPath = combined.join("/");
         }
         const af = this.app.vault.getAbstractFileByPath(absoPath);
 
         if (af && af instanceof TFile) {
           file = af;
         } else {
-          warn(t('main.notafile') + absoPath, af);
+          warn(t("main.notafile") + absoPath, af);
         }
       }
 
-      if(!file) {
+      if (!file) {
         file = this.getFile(fileName, fileMap);
       }
 
       if (file && isAssetTypeAnImage(file.path)) {
-        const absPath = env === 'desktop' ? `${basePath}/${file.path}` : file.path;
+        const absPath =
+          env === "desktop" ? `${basePath}/${file.path}` : file.path;
 
         if (!imageList.find(item => item.path === absPath)) {
           imageList.push({
@@ -647,11 +749,11 @@ export default class imageAutoUploadPlugin extends Plugin {
     }
 
     if (imageList.length === 0) {
-      new Notice(t('main.noImageParsed'));
+      new Notice(t("main.noImageParsed"));
       return;
     }
 
-    new Notice(t('main.uploadStart', { count: imageList.length }));
+    new Notice(t("main.uploadStart", { count: imageList.length }));
 
     try {
       const concurrency = getConcurrencyValue(this.settings.concurrencyMode);
@@ -661,8 +763,8 @@ export default class imageAutoUploadPlugin extends Plugin {
       );
 
       if (!res.success) {
-        new Notice(t('upload.someFailed'));
-        warn(t('upload.someFailed') + ':', res.msg);
+        new Notice(t("upload.someFailed"));
+        warn(t("upload.someFailed") + ":", res.msg);
       }
 
       const urls = [...(res.result || [])];
@@ -672,43 +774,49 @@ export default class imageAutoUploadPlugin extends Plugin {
       ];
       await this.saveSettings();
 
-      imageList.forEach((item) => {
-        const newUrl = urls.shift();
-        if(newUrl) {
-          content = content.replaceAll(item.source, '![](${newUrl})');
+      // 创建映射表，确保每个图片源对应一个新URL
+      const urlMap = new Map<string, string>();
+      imageList.forEach((item, index) => {
+        const newUrl = urls[index];
+        if (newUrl) {
+          urlMap.set(item.source, newUrl);
         }
       });
+
+      // 使用精确替换，确保每个图片源只替换一次
+      // 遍历所有匹配的图片源并替换
+      for (const [source, newUrl] of urlMap.entries()) {
+        // 每个source都是从文档中唯一匹配到的完整图片标记，直接替换即可
+        content = content.replace(source, `![](${newUrl})`);
+      }
 
       this.helper.setValue(content);
 
       if (this.settings.deleteSource) {
         for (const image of imageList) {
           const fileDel = this.app.vault.getAbstractFileByPath(image.obspath);
-          if(fileDel) await this.app.fileManager.trashFile(fileDel);
+          if (fileDel) await this.app.fileManager.trashFile(fileDel);
         }
       }
 
-    new Notice(t('upload.complete'));
+      new Notice(t("upload.complete"));
     } catch (error) {
-      error(t('upload.failed') + ':', error);
-      new Notice(t('upload.failedNotice'));
+      error(t("upload.failed") + ":", error);
+      new Notice(t("upload.failedNotice"));
     }
   }
 
   // 处理粘贴中的网络图片再上传
   async handleNetworkPasteImages(imageList: PastedImageItem[]) {
     try {
-      const res = await this.uploader.uploadFiles(imageList.map((i) => i.path));
+      const res = await this.uploader.uploadFiles(imageList.map(i => i.path));
       if (res.success && res.result) {
         let content = this.helper.getValue();
         const urls = [...res.result];
-        imageList.forEach((img) => {
+        imageList.forEach(img => {
           const newUrl = urls.shift();
           if (newUrl) {
-            content = content.replace(
-              img.source,
-              `![${img.name}](${newUrl})`
-            );
+            content = content.replace(img.source, `![${img.name}](${newUrl})`);
           }
         });
         this.helper.setValue(content);
@@ -721,8 +829,8 @@ export default class imageAutoUploadPlugin extends Plugin {
       error(t("upload.failed"), e);
       new Notice(t("upload.failedNotice"));
     }
-  } 
-  
+  }
+
   // 将上传结果追加保存
   appendUploadedUrls(urls: string[] = []) {
     if (!urls.length) return;
@@ -738,10 +846,9 @@ export default class imageAutoUploadPlugin extends Plugin {
     if (!this.settings.uploadByClipSwitch) return false;
 
     const files = clipboardData.files;
-    const text = clipboardData.getData('text');
+    const text = clipboardData.getData("text");
 
-    const isImage =
-      files.length > 0 && files[0].type.startsWith("image");
+    const isImage = files.length > 0 && files[0].type.startsWith("image");
 
     if (!isImage) return false;
 
@@ -769,19 +876,15 @@ export default class imageAutoUploadPlugin extends Plugin {
   // 插入临时文本
   insertTemporaryText(editor: Editor, pasteId: string) {
     let progressText = imageAutoUploadPlugin.progressTextFor(pasteId);
-    editor.replaceSelection(progressText + '\n');
+    editor.replaceSelection(progressText + "\n");
   }
 
   private static progressTextFor(id: string) {
-    return t('upload.uploading') + id;
+    return t("upload.uploading") + id;
   }
 
   // 嵌入 Markdown 图片
-  embedMarkDownImage(
-    editor: Editor,
-    pasteId: string,
-    imageUrl: string,
-  ) {
+  embedMarkDownImage(editor: Editor, pasteId: string, imageUrl: string) {
     let progressText = imageAutoUploadPlugin.progressTextFor(pasteId);
     let markDownImage = `![](${imageUrl})`;
 
@@ -794,28 +897,28 @@ export default class imageAutoUploadPlugin extends Plugin {
 
   // 处理上传失败
   handleFailedUpload(editor: Editor, pasteId: string, reason: unknown) {
-    let msg = '';
+    let msg = "";
 
     if (reason instanceof Error) {
       msg = reason.message;
-    } else if (typeof reason === 'string') {
+    } else if (typeof reason === "string") {
       msg = reason;
     } else {
       try {
         msg = JSON.stringify(reason);
       } catch {
-        msg = 'Unknown error';
+        msg = "Unknown error";
       }
     }
 
     new Notice(msg);
-    error(t('upload.requestException') + ': ' + msg);
+    error(t("upload.requestException") + ": " + msg);
 
     const progressText = imageAutoUploadPlugin.progressTextFor(pasteId);
     imageAutoUploadPlugin.replaceFirstOccurrence(
       editor,
       progressText,
-      t('upload.failedNotice')
+      t("upload.failedNotice")
     );
   }
 

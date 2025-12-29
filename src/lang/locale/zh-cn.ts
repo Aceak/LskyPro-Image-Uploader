@@ -36,6 +36,15 @@ export default {
   "main.notafile": "解析路径成功但不是文件:",
 
   /* ===============================
+   * Helper 工具
+   * =============================== */
+  "helper.getAllFiles.start": "开始获取所有图片文件",
+  "helper.getAllFiles.noEditor": "未找到编辑器实例",
+  "helper.getAllFiles.complete": "获取完成，共返回 {{count}} 个图片",
+  "helper.getImageLink.start": "开始提取图片链接",
+  "helper.getImageLink.complete": "提取完成，共找到 {{count}} 个图片链接",
+
+  /* ===============================
    * 下载流程
    * =============================== */
   "download.failed": "下载失败",
@@ -47,8 +56,60 @@ export default {
     "检测到网络图片：{{count}}",
     "成功下载：{{success}}",
     "已跳过：{{skipped}}",
-    "下载失败：{{failed}}"
+    "下载失败：{{failed}}",
   ].join("\n"),
+  "download.debug.startAll": "开始下载所有图片",
+  "download.debug.replaceReferences":
+    "开始替换 Markdown 图片引用: {{count}} 个图片",
+  "download.debug.originalContentLength":
+    "原始 Markdown 内容长度: {{length}} 字符",
+  "download.debug.replaceSuccess":
+    "替换图片引用 [ {{index}} / {{total}} ]: {{source}} → {{target}}",
+  "download.debug.replaceFailed":
+    "未找到匹配项 [ {{index}} / {{total}} ]: {{source}}",
+  "download.debug.updateComplete":
+    "Markdown 内容更新完成，共替换 {{count}} 个图片引用",
+  "download.debug.updatedContentLength":
+    "更新后 Markdown 内容长度: {{length}} 字符",
+  "download.debug.report":
+    "下载报告 - 总数: {{count}}, 成功: {{success}}, 跳过: {{skipped}}, 失败: {{failed}}",
+  "download.debug.exception": "下载异常: {{url}} {{error}}",
+  "download.debug.start": "开始下载图片: {{url}}",
+  "download.debug.folderPath": "文件夹路径: {{path}}",
+  "download.debug.originalFilename": "原始文件名: {{filename}}",
+  "download.debug.responseStatus": "HTTP 响应状态码: {{status}}",
+  "download.debug.downloadFailed": "下载失败: {{message}}",
+  "download.debug.safeFilename": "清理后的文件名: {{filename}}",
+  "download.debug.failed": "下载失败: {{error}}",
+  "download.debug.savePath": "保存路径: {{path}}",
+  "download.debug.success": "图片保存成功: {{path}}",
+  "download.debug.pathConditions": "路径条件判断 - folderPath: {{folderPath}}",
+  "download.debug.pathConditionCheck":
+    "folderPath === '{{condition}}': {{result}}",
+  "download.debug.pathConditionLength": "folderPath.length: {{length}}",
+  "download.debug.pathConditionChar": "folderPath.charCodeAt(0): {{code}}",
+  "download.debug.rootPathHandling":
+    "根目录/空目录处理，直接使用文件名: {{path}}",
+  "download.debug.nonRootPathHandling": "非根目录处理，构建完整路径: {{path}}",
+  "download.debug.finalSavePath": "最终保存路径: {{path}}",
+  "download.debug.responseSize": "响应数据大小: {{size}} 字节",
+  "download.debug.saveSuccess": "图片保存成功: {{path}}",
+  "download.debug.downloadException": "下载异常: {{message}}",
+
+  /* ===============================
+   * 附件路径
+   * =============================== */
+  "attachmentPath.debug.original": "原始assetFolder: {{path}}",
+  "attachmentPath.debug.noActiveFile": "未找到活动文件",
+  "attachmentPath.debug.activeFile": "活动文件: {{path}}",
+  "attachmentPath.debug.activeFileParent": "活动文件父目录: {{path}}",
+  "attachmentPath.debug.emptyAssetFolder":
+    "assetFolder为空，返回活动文件父目录: {{path}}",
+  "attachmentPath.debug.removeDotSlash": "移除./后的相对路径: {{path}}",
+  "attachmentPath.debug.emptyRelativePath":
+    "相对路径为空，返回父目录: {{path}}",
+  "attachmentPath.debug.fullPath": "最终返回路径: {{path}}",
+  "attachmentPath.debug.final": "最终附件路径: {{path}}",
 
   /* ===============================
    * 上传流程
@@ -71,10 +132,18 @@ export default {
   "upload.clipboardFailed": "从剪贴板上传图片失败",
   "upload.exception": "上传异常",
   "upload.v2.storageIdRequired": "LskyPro v2 需要配置存储 ID",
+  "upload.allFiles": "上传所有文件",
 
   // 上传结果汇总
-  "upload.summary.completed": "上传完成（成功 {{successCount}} / 共 {{total}}，失败 {{failedCount}}）",
+  "upload.summary.completed":
+    "上传完成（成功 {{successCount}} / 共 {{total}}，失败 {{failedCount}}）",
   "upload.summary.allCompleted": "全部图片上传成功，共上传 {{total}} 张",
+  "upload.debug.requestBody": "上传请求体",
+  "upload.debug.responseStatus": "上传响应状态码: {{status}}",
+  "upload.debug.responseBody": "上传响应体",
+  "upload.debug.errorMessage": "上传错误信息: {{message}}",
+  "upload.debug.stackTrace": "上传错误堆栈信息",
+  "upload.debug.errorDetails": "上传错误详细信息",
 
   /* ===============================
    * 响应与验证
@@ -131,7 +200,8 @@ export default {
 
   // 并发控制
   "settings.concurrency": "上传并发数量",
-  "settings.concurrency.desc": "并行上传任务数量，可根据网络速度和图床性能调整。",
+  "settings.concurrency.desc":
+    "并行上传任务数量，可根据网络速度和图床性能调整。",
   "settings.concurrency.low": "低",
   "settings.concurrency.medium": "中",
   "settings.concurrency.high": "高",
@@ -166,4 +236,12 @@ export default {
   "setting.newWorkBlackDomains": "网络域名黑名单",
   "setting.deleteSource": "上传成功后删除源文件",
   "setting.concurrencyMode": "上传并发",
+
+  /* ===============================
+   * i18n 国际化
+   * =============================== */
+  "i18n.debug.autoMode": "自动模式 -> Obsidian 语言: {{locale}}",
+  "i18n.debug.switchLanguage": "切换到语言: {{language}}",
+  "i18n.debug.activeLocale": "当前激活语言: {{locale}}",
+  "i18n.debug.loadedLocales": "已加载语言: {{locales}}",
 };

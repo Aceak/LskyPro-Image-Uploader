@@ -67,19 +67,19 @@ export function setLanguage(lang: string, app?: App): void {
     try {
       // 使用Obsidian内置API获取语言设置
       target = getLanguage();
-      dbg("[i18n] Auto mode -> Obsidian locale:", normalizeLocale(target));
-    } catch (e) {
+      dbg(t("i18n.debug.autoMode", { locale: normalizeLocale(target) }));
+    } catch {
       warn("[i18n] Failed to get Obsidian language, fallback to English");
       target = "en";
     }
   } else {
-    dbg("[i18n] Switched to language:", normalizeLocale(lang));
+    dbg(t("i18n.debug.switchLanguage", { language: normalizeLocale(lang) }));
   }
 
   const next = getLocale(target);
   currentLocale = next.key;
   locale = next.dict;
-  dbg("[i18n] Active locale:", currentLocale);
+  dbg(t("i18n.debug.activeLocale", { locale: currentLocale }));
 }
 
 // 初始化函数，用于插件加载时设置语言
@@ -140,5 +140,5 @@ export function tn(
   return t(key, { ...vars, count });
 }
 
-dbg("[i18n] Loaded locales:", Object.keys(localeMap));
-dbg("[i18n] Active:", currentLocale);
+dbg(t("i18n.debug.loadedLocales", { locales: Object.keys(localeMap).join(", ") }));
+dbg(t("i18n.debug.activeLocale", { locale: currentLocale }));

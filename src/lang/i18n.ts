@@ -12,13 +12,6 @@ const localeMap = {
   "zh-tw": zhTW,
 } as const;
 
-export const languageName: Record<string, string> = {
-  auto: "Auto",
-  "zh-cn": "简体中文",
-  "zh-tw": "繁體中文",
-  en: "English",
-};
-
 export type TranslationDict = typeof en;
 export type TranslationKeys = keyof TranslationDict;
 
@@ -61,19 +54,14 @@ export function getCurrentLanguage(): string {
   return currentLocale;
 }
 
-export function setLanguage(lang: string, app?: App): void {
-  let target = lang;
-  if ((lang === "auto" || lang === "Auto") && app) {
-    try {
-      // 使用Obsidian内置API获取语言设置
-      target = getLanguage();
-      dbg(t("i18n.debug.autoMode", { locale: normalizeLocale(target) }));
-    } catch {
-      warn("[i18n] Failed to get Obsidian language, fallback to English");
-      target = "en";
-    }
-  } else {
-    dbg(t("i18n.debug.switchLanguage", { language: normalizeLocale(lang) }));
+export function setLanguage(app: App): void {
+  let target: string;
+  try {
+    target = getLanguage();
+    dbg(t("i18n.debug.autoMode", { locale: normalizeLocale(target) }));
+  } catch {
+    warn("[i18n] Failed to get Obsidian language, fallback to English");
+    target = "en";
   }
 
   const next = getLocale(target);
@@ -83,8 +71,8 @@ export function setLanguage(lang: string, app?: App): void {
 }
 
 // 初始化函数，用于插件加载时设置语言
-export function initLanguage(app: App, lang: string): void {
-  setLanguage(lang, app);
+export function initLanguage(app: App): void {
+  setLanguage(app);
 }
 
 function getValue(obj: unknown, path: string): string | undefined {

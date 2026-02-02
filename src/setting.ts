@@ -4,7 +4,7 @@
  */
 import { App, PluginSettingTab, Setting, Notice } from "obsidian";
 import imageAutoUploadPlugin from "./main";
-import { t, languageName, TranslationKeys } from "./lang/i18n";
+import { t, TranslationKeys } from "./lang/i18n";
 import { error, dbg, debugState } from "./utils";
 
 /**
@@ -12,19 +12,18 @@ import { error, dbg, debugState } from "./utils";
  * 定义所有可配置的插件选项
  */
 export interface PluginSettings {
-  debug: boolean;                // 调试模式，用于开发和测试
-  uploadByClipSwitch: boolean;    // 启用/禁用剪贴板自动上传
+  debug: boolean; // 调试模式，用于开发和测试
+  uploadByClipSwitch: boolean; // 启用/禁用剪贴板自动上传
   uploadAttachmentsSwitch: boolean; // 启用/禁用附件自动上传
-  uploadServer: string;           // LskyPro服务器地址
-  token: string;                  // 认证令牌
-  storage_id: string;             // 存储ID（V2版本）
-  strategy_id: string;            // 策略ID（V1版本）
-  uploader: string;               // 上传器类型（V1或V2）
-  workOnNetWork: boolean;         // 是否处理网络图片
-  newWorkBlackDomains: string;    // 网络黑名单域名
-  deleteSource: boolean;          // 上传后删除源文件
-  concurrencyMode: ConcurrencyLevel;        // 并发模式（1、3、5）
-  language: string;               // 语言设置（Auto、zh-cn、en）
+  uploadServer: string; // LskyPro服务器地址
+  token: string; // 认证令牌
+  storage_id: string; // 存储ID（V2版本）
+  strategy_id: string; // 策略ID（V1版本）
+  uploader: string; // 上传器类型（V1或V2）
+  workOnNetWork: boolean; // 是否处理网络图片
+  newWorkBlackDomains: string; // 网络黑名单域名
+  deleteSource: boolean; // 上传后删除源文件
+  concurrencyMode: ConcurrencyLevel; // 并发模式（1、3、5）
   uploadedImages?: string[];
 }
 
@@ -33,20 +32,19 @@ export interface PluginSettings {
  * 当用户首次安装插件时使用
  */
 export const DEFAULT_SETTINGS: PluginSettings = {
-  debug: false,                  // 默认禁用调试模式
-  uploadByClipSwitch: true,       // 默认启用剪贴板自动上传
-  uploadAttachmentsSwitch: true,  // 默认启用附件自动上传
-  uploader: "LskyPro-v2",         // 默认使用V2版本上传器
-  token: "",                     // 默认空令牌
-  storage_id:"",                 // 默认空存储ID
-  strategy_id: "",               // 默认空策略ID
+  debug: false, // 默认禁用调试模式
+  uploadByClipSwitch: true, // 默认启用剪贴板自动上传
+  uploadAttachmentsSwitch: true, // 默认启用附件自动上传
+  uploader: "LskyPro-v2", // 默认使用V2版本上传器
+  token: "", // 默认空令牌
+  storage_id: "", // 默认空存储ID
+  strategy_id: "", // 默认空策略ID
   uploadServer: "https://lsky.xxxx", // 默认服务器地址示例
-  workOnNetWork: false,           // 默认不处理网络图片
-  newWorkBlackDomains: "",        // 默认无黑名单域名
-  deleteSource: false,            // 默认不删除源文件
-  concurrencyMode: "medium",      // 默认中等并发模式
-  language: "auto",               // 默认自动语言
-}
+  workOnNetWork: false, // 默认不处理网络图片
+  newWorkBlackDomains: "", // 默认无黑名单域名
+  deleteSource: false, // 默认不删除源文件
+  concurrencyMode: "medium", // 默认中等并发模式
+};
 
 export const getSettingLabel = (key: keyof PluginSettings): string => {
   const map: Partial<Record<keyof PluginSettings, string>> = {
@@ -84,7 +82,7 @@ export const concurrencyKeys: Record<ConcurrencyLevel, TranslationKeys> = {
  * 负责创建和管理插件的设置界面
  */
 export class SettingTab extends PluginSettingTab {
-  plugin: imageAutoUploadPlugin;   // 插件实例引用
+  plugin: imageAutoUploadPlugin; // 插件实例引用
 
   /**
    * 构造函数
@@ -104,12 +102,10 @@ export class SettingTab extends PluginSettingTab {
     const { containerEl } = this;
     containerEl.empty();
 
-    
-    
     // 剪贴板自动上传设置
     new Setting(containerEl)
-      .setName(t('settings.autoUploadClipboard'))
-      .setDesc(t('settings.autoUploadClipboard.desc'))
+      .setName(t("settings.autoUploadClipboard"))
+      .setDesc(t("settings.autoUploadClipboard.desc"))
       .addToggle(toggle =>
         toggle
           .setValue(this.plugin.settings.uploadByClipSwitch)
@@ -122,8 +118,8 @@ export class SettingTab extends PluginSettingTab {
       );
 
     new Setting(containerEl)
-      .setName(t('settings.autoUploadAttachments'))
-      .setDesc(t('settings.autoUploadAttachments.desc'))
+      .setName(t("settings.autoUploadAttachments"))
+      .setDesc(t("settings.autoUploadAttachments.desc"))
       .addToggle(toggle =>
         toggle
           .setValue(this.plugin.settings.uploadAttachmentsSwitch)
@@ -131,34 +127,37 @@ export class SettingTab extends PluginSettingTab {
             this.plugin.settings.uploadAttachmentsSwitch = value;
             await this.plugin.saveSettings();
             // 重新初始化上传器以应用新设置
-            this.plugin.uploader?.updateSetting("uploadAttachmentsSwitch", value);
+            this.plugin.uploader?.updateSetting(
+              "uploadAttachmentsSwitch",
+              value
+            );
           })
       );
-    
+
     new Setting(containerEl)
-      .setName(t('settings.defaultUploader'))
-      .setDesc(t('settings.defaultUploader.desc'))
+      .setName(t("settings.defaultUploader"))
+      .setDesc(t("settings.defaultUploader.desc"))
       .addDropdown(cb =>
-          cb
-            .addOption('LskyPro-v2', 'V2')
-            .addOption('LskyPro-v1', 'V1')
-            .setValue(this.plugin.settings.uploader)
-            .onChange(async value => {
-              this.plugin.settings.uploader = value;
-              this.display();
-              await this.plugin.saveSettings();
-              // 重新初始化上传器以应用新版本
-              this.plugin.uploader?.updateSetting("uploader", value);
-            })
-        );
+        cb
+          .addOption("LskyPro-v2", "V2")
+          .addOption("LskyPro-v1", "V1")
+          .setValue(this.plugin.settings.uploader)
+          .onChange(async value => {
+            this.plugin.settings.uploader = value;
+            this.display();
+            await this.plugin.saveSettings();
+            // 重新初始化上传器以应用新版本
+            this.plugin.uploader?.updateSetting("uploader", value);
+          })
+      );
 
     // 无论选择哪个版本，都显示基本设置
-      new Setting(containerEl)
-      .setName(t('settings.serverDomain'))
-      .setDesc(t('settings.serverDomain.desc'))
+    new Setting(containerEl)
+      .setName(t("settings.serverDomain"))
+      .setDesc(t("settings.serverDomain.desc"))
       .addText(text =>
         text
-          .setPlaceholder(t('settings.serverDomain.placeholder'))
+          .setPlaceholder(t("settings.serverDomain.placeholder"))
           .setValue(this.plugin.settings.uploadServer)
           .onChange(async key => {
             this.plugin.settings.uploadServer = key;
@@ -167,12 +166,12 @@ export class SettingTab extends PluginSettingTab {
             this.plugin.uploader?.updateSetting("uploadServer", key);
           })
       );
-      new Setting(containerEl)
-      .setName(t('settings.token'))
-      .setDesc(t('settings.token.desc'))
+    new Setting(containerEl)
+      .setName(t("settings.token"))
+      .setDesc(t("settings.token.desc"))
       .addText(text =>
         text
-          .setPlaceholder(t('settings.token.placeholder'))
+          .setPlaceholder(t("settings.token.placeholder"))
           .setValue(this.plugin.settings.token)
           .onChange(async key => {
             this.plugin.settings.token = key;
@@ -181,45 +180,43 @@ export class SettingTab extends PluginSettingTab {
             this.plugin.uploader?.updateSetting("token", key);
           })
       );
-      
+
     // 根据版本显示对应的存储ID设置
-    if (this.plugin.settings.uploader === 'LskyPro-v2') {
+    if (this.plugin.settings.uploader === "LskyPro-v2") {
       new Setting(containerEl)
-      .setName(t('settings.storageId'))
-      .setDesc(t('settings.storageId.desc'))
-      .addText(text =>
-        text
-          .setPlaceholder(t('settings.storageId.placeholder'))
-          .setValue(this.plugin.settings.storage_id)
-          .onChange(async key => {
-            this.plugin.settings.storage_id = key;
-            await this.plugin.saveSettings();
-            // 重新初始化上传器以应用新存储ID
-            this.plugin.uploader?.updateSetting("storage_id", key);
-          })
-      );
-    } else if (this.plugin.settings.uploader === 'LskyPro-v1') {
+        .setName(t("settings.storageId"))
+        .setDesc(t("settings.storageId.desc"))
+        .addText(text =>
+          text
+            .setPlaceholder(t("settings.storageId.placeholder"))
+            .setValue(this.plugin.settings.storage_id)
+            .onChange(async key => {
+              this.plugin.settings.storage_id = key;
+              await this.plugin.saveSettings();
+              // 重新初始化上传器以应用新存储ID
+              this.plugin.uploader?.updateSetting("storage_id", key);
+            })
+        );
+    } else if (this.plugin.settings.uploader === "LskyPro-v1") {
       new Setting(containerEl)
-      .setName(t('settings.strategyId'))
-      .setDesc(t('settings.strategyId.desc'))
-      .addText(text =>
-        text
-          .setPlaceholder(t('settings.strategyId.placeholder'))
-          .setValue(this.plugin.settings.strategy_id)
-          .onChange(async key => {
-            this.plugin.settings.strategy_id = key;
-            await this.plugin.saveSettings();
-            // 重新初始化上传器以应用新策略ID
-            this.plugin.uploader?.updateSetting("strategy_id", key);
-          })
-      );
+        .setName(t("settings.strategyId"))
+        .setDesc(t("settings.strategyId.desc"))
+        .addText(text =>
+          text
+            .setPlaceholder(t("settings.strategyId.placeholder"))
+            .setValue(this.plugin.settings.strategy_id)
+            .onChange(async key => {
+              this.plugin.settings.strategy_id = key;
+              await this.plugin.saveSettings();
+              // 重新初始化上传器以应用新策略ID
+              this.plugin.uploader?.updateSetting("strategy_id", key);
+            })
+        );
     }
 
-
-
     new Setting(containerEl)
-      .setName(t('settings.workOnNetwork'))
-      .setDesc(t('settings.workOnNetwork.desc'))
+      .setName(t("settings.workOnNetwork"))
+      .setDesc(t("settings.workOnNetwork.desc"))
       .addToggle(toggle =>
         toggle
           .setValue(this.plugin.settings.workOnNetWork)
@@ -233,8 +230,8 @@ export class SettingTab extends PluginSettingTab {
       );
 
     new Setting(containerEl)
-      .setName(t('settings.blacklist'))
-      .setDesc(t('settings.blacklist.desc'))
+      .setName(t("settings.blacklist"))
+      .setDesc(t("settings.blacklist.desc"))
       .addTextArea(textArea =>
         textArea
           .setValue(this.plugin.settings.newWorkBlackDomains)
@@ -247,8 +244,8 @@ export class SettingTab extends PluginSettingTab {
       );
 
     new Setting(containerEl)
-      .setName(t('settings.deleteSource'))
-      .setDesc(t('settings.deleteSource.desc'))
+      .setName(t("settings.deleteSource"))
+      .setDesc(t("settings.deleteSource.desc"))
       .addToggle(toggle =>
         toggle
           .setValue(this.plugin.settings.deleteSource)
@@ -262,71 +259,45 @@ export class SettingTab extends PluginSettingTab {
       );
 
     new Setting(containerEl)
-      .setName(t('settings.concurrency'))
-      .setDesc(t('settings.concurrency.desc'))
+      .setName(t("settings.concurrency"))
+      .setDesc(t("settings.concurrency.desc"))
       .addDropdown(cb => {
-        cb.addOption('low', t('settings.concurrency.low'));
-        cb.addOption('medium', t('settings.concurrency.medium'));
-        cb.addOption('high', t('settings.concurrency.high'));
+        cb.addOption("low", t("settings.concurrency.low"));
+        cb.addOption("medium", t("settings.concurrency.medium"));
+        cb.addOption("high", t("settings.concurrency.high"));
 
-        cb.setValue(this.plugin.settings.concurrencyMode || 'medium')
-          .onChange(async (value: ConcurrencyLevel) => {
+        cb.setValue(this.plugin.settings.concurrencyMode || "medium").onChange(
+          async (value: ConcurrencyLevel) => {
             this.plugin.settings.concurrencyMode = value;
             await this.plugin.saveSettings();
 
             const modeLabel = t(concurrencyKeys[value]);
-            const message = `${t('settings.concurrency.switched')} ${modeLabel}`;
+            const message = `${t(
+              "settings.concurrency.switched"
+            )} ${modeLabel}`;
 
             new Notice(message);
             // 重新初始化上传器以应用新并发模式
             this.plugin.uploader?.updateSetting("concurrencyMode", value);
-          });
+          }
+        );
       });
 
     new Setting(containerEl)
-      .setName(t('settings.debugMode'))
-      .setDesc(t('settings.debugMode.desc'))
+      .setName(t("settings.debugMode"))
+      .setDesc(t("settings.debugMode.desc"))
       .addToggle(toggle =>
-        toggle
-          .setValue(this.plugin.settings.debug)
-          .onChange(async value => {
-            this.plugin.settings.debug = value;
-            await this.plugin.saveSettings();
-            // 直接更新调试模式状态
-            debugState.enabled = value;
-            if (value) {
-              new Notice(t('settings.debugMode.enabled'));
-            } else {
-              new Notice(t('settings.debugMode.disabled'));
-            }
-          })
+        toggle.setValue(this.plugin.settings.debug).onChange(async value => {
+          this.plugin.settings.debug = value;
+          await this.plugin.saveSettings();
+          // 直接更新调试模式状态
+          debugState.enabled = value;
+          if (value) {
+            new Notice(t("settings.debugMode.enabled"));
+          } else {
+            new Notice(t("settings.debugMode.disabled"));
+          }
+        })
       );
-
-    new Setting(containerEl)
-      .setName(t('settings.language'))
-      .setDesc(t('settings.language.desc'))
-      .addDropdown(dropdown => {
-        dropdown
-          .addOption('auto', 'Auto')
-          .addOption('en', 'English')
-          .addOption('zh-cn', '简体中文')
-          .addOption('zh-tw', '繁體中文')
-          .setValue(this.plugin.settings.language)
-          .onChange(async (value: string) => {
-            this.plugin.settings.language = value;
-            await this.plugin.saveSettings();
-            try {
-              const { setLanguage } = await import('./lang/i18n');
-              setLanguage(value.toLowerCase(), this.app);
-              dbg(t('settings.language.switched'), value);
-              new Notice(t('settings.language.switched') + ' '  + languageName[value]);
-              this.display(); 
-            } catch (e) {
-              new Notice(t('settings.language.failed'));
-              error(t('settings.language.failed', + ':' + e));
-            }
-          });
-      });
-
   }
 }

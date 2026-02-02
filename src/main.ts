@@ -84,7 +84,7 @@ export default class imageAutoUploadPlugin extends Plugin {
     await this.loadSettings();
 
     try {
-      initLanguage(this.app, "auto");
+      initLanguage(this.app);
       dbg(t("main.languageSet"), getCurrentLanguage());
     } catch (err) {
       error(t("main.languageInitFailed"), err);
@@ -617,52 +617,6 @@ export default class imageAutoUploadPlugin extends Plugin {
     return imageList;
   }
 
-  // 文件映射缓存
-  private fileMapCache: Record<string, TFile> | null = null;
-  private filePathMapCache: Record<string, TFile> | null = null;
-  private lastCacheTime: number = 0;
-  private CACHE_EXPIRE_TIME = 3000; // 缓存有效期3秒
-
-  // 获取文件映射（带缓存）
-  private getFileMap(): Record<string, TFile> {
-    const now = Date.now();
-    // 如果缓存存在且未过期，直接使用
-    if (
-      this.fileMapCache &&
-      now - this.lastCacheTime < this.CACHE_EXPIRE_TIME
-    ) {
-      return this.fileMapCache;
-    }
-    // 否则重新构建缓存
-    this.fileMapCache = arrayToObject(this.app.vault.getFiles(), "name");
-    this.filePathMapCache = arrayToObject(this.app.vault.getFiles(), "path");
-    this.lastCacheTime = now;
-    return this.fileMapCache;
-  }
-
-  // 获取文件路径映射（带缓存）
-  private getFilePathMap(): Record<string, TFile> {
-    const now = Date.now();
-    // 如果缓存存在且未过期，直接使用
-    if (
-      this.filePathMapCache &&
-      now - this.lastCacheTime < this.CACHE_EXPIRE_TIME
-    ) {
-      return this.filePathMapCache;
-    }
-    // 否则重新构建缓存
-    this.fileMapCache = arrayToObject(this.app.vault.getFiles(), "name");
-    this.filePathMapCache = arrayToObject(this.app.vault.getFiles(), "path");
-    this.lastCacheTime = now;
-    return this.filePathMapCache;
-  }
-
-  // 获取文件对象
-  getFile(fileName: string, fileMap?: Record<string, TFile>) {
-    const map = fileMap ?? this.getFileMap();
-    return map[fileName];
-  }
-
   // upload all file
   async uploadAllFile() {
     dbg(t("upload.allFiles"));
@@ -680,8 +634,6 @@ export default class imageAutoUploadPlugin extends Plugin {
         ? (this.app.vault.adapter as FileSystemAdapter).getBasePath()
         : "";
 
-    const fileMap = this.getFileMap();
-    const filePathMap = this.getFilePathMap();
     const fileArray = this.filterFile(this.helper.getAllFiles());
 
     const imageList: Image[] = [];
@@ -690,14 +642,13 @@ export default class imageAutoUploadPlugin extends Plugin {
       const encodedUri = match.path;
 
       const matchPath = decodeURI(encodedUri);
-      const fileName = matchPath.split(/[\\/]/).pop() || "";
       let file: TFile | null = null;
-      // 绝对路径
-      if (filePathMap[matchPath]) {
-        file = filePathMap[matchPath];
+
+      const af = this.app.vault.getAbstractFileByPath(matchPath);
+      if (af && af instanceof TFile) {
+        file = af;
       }
 
-      // 相对路径
       if (
         !file &&
         (matchPath.startsWith("./") || matchPath.startsWith("../"))
@@ -720,17 +671,10 @@ export default class imageAutoUploadPlugin extends Plugin {
 
           absoPath = combined.join("/");
         }
-        const af = this.app.vault.getAbstractFileByPath(absoPath);
-
-        if (af && af instanceof TFile) {
-          file = af;
-        } else {
-          warn(t("main.notafile") + absoPath, af);
+        const relativeFile = this.app.vault.getAbstractFileByPath(absoPath);
+        if (relativeFile && relativeFile instanceof TFile) {
+          file = relativeFile;
         }
-      }
-
-      if (!file) {
-        file = this.getFile(fileName, fileMap);
       }
 
       if (file && isAssetTypeAnImage(file.path)) {

@@ -161,20 +161,6 @@ Reference: [Lsky Pro API Documentation](https://lsky-pro.apifox.cn).
 - Image compression options
 - Enhanced upload status notifications
 
-## Version Update Log
-
-- **1.1.0**:
-  - Added: Desktop clipboard auto upload feature
-  - Added: Mobile attachment auto upload feature
-  - Added: Multi-language support (auto/Chinese/English)
-  - Added: Concurrent upload modes (low/medium/high)
-  - Added: Debug log output option
-  - Optimized: Response parsing logic, unified handling of status/message/data fields
-  - Optimized: Removed Node dependencies, using browser APIs only
-  - Fixed: Some configuration items displaying abnormally on mobile
-  - Fixed: Mobile compatibility issues
-  - Fixed: Auto delete source files option, handled in a safer way
-
 ---
 
 ## 🤝 Acknowledgements

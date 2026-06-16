@@ -120,6 +120,11 @@ export class LskyProUploader {
   updateSetting<K extends keyof PluginSettings>(key: K, value: PluginSettings[K]) {
     this.settings[key] = value;
 
+    // 当切换 uploader 版本时，同步更新内部 version 字段
+    if (key === "uploader") {
+      this.version = value === "LskyPro-v1" ? "v1" : "v2";
+    }
+
     const label = getSettingLabel(key) ?? key;
 
     dbg(t("setting.updateConfig") + `${label} = ${String(value)}`);

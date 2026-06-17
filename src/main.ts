@@ -15,7 +15,6 @@ import {
 import {
   isAssetTypeAnImage,
   getUrlAsset,
-  arrayToObject,
   resolveImageFile,
   getPlatformEnv,
   isValidImageExtension,
@@ -45,10 +44,9 @@ interface PastedImageItem {
 }
 
 export default class imageAutoUploadPlugin extends Plugin {
-  settings: PluginSettings;
-  helper: Helper;
-  editor: Editor;
-  uploader: LskyProUploader; // 统一的上传器实例
+  settings!: PluginSettings;
+  helper!: Helper;
+  uploader!: LskyProUploader; // 统一的上传器实例
 
   async loadSettings() {
     const loaded = await this.loadData();
@@ -222,7 +220,7 @@ export default class imageAutoUploadPlugin extends Plugin {
               this.embedMarkDownImage(editor, pasteId, url);
               this.appendUploadedUrls(res.result);
             } catch (err) {
-              this.handleFailedUpload(editor, pasteId, err?.message);
+              this.handleFailedUpload(editor, pasteId, err instanceof Error ? err.message : String(err));
             }
           }
         }
@@ -269,7 +267,7 @@ export default class imageAutoUploadPlugin extends Plugin {
   // 注册移动端自动上传事件
   registerMobileAutoUpload() {
     // 在布局准备就绪后再注册create事件，确保编辑器和工作区完全加载
-    const layoutReadyEvent = this.app.workspace.onLayoutReady(() => {
+    this.app.workspace.onLayoutReady(() => {
       const createEvent = this.app.vault.on("create", async file => {
         if (!(file instanceof TFile)) return;
         if (!isAssetTypeAnImage(file.path)) return;
@@ -414,7 +412,7 @@ export default class imageAutoUploadPlugin extends Plugin {
           if (response.ok) {
             imageArray.push({
               source: file.source,
-              path: response.path,
+              path: response.path || saveName,
             });
             // 增加成功下载计数
             successDownloaded++;
@@ -440,13 +438,11 @@ export default class imageAutoUploadPlugin extends Plugin {
       "字符"
     );
 
-    let replacedCount = 0;
     imageArray.forEach((image, index) => {
       const originalLength = value.length;
       value = value.replace(image.source, `![](${encodeURI(image.path)})`);
 
       if (value.length !== originalLength) {
-        replacedCount++;
         dbg(
           "[downloadAllImageFiles] 替换图片引用 [",
           index + 1,
@@ -492,8 +488,8 @@ export default class imageAutoUploadPlugin extends Plugin {
 
   //获取附件路径（相对路径）
   getAttachmentFolderPath() {
-    // @ts-ignore
-    let assetFolder: string = this.app.vault.config.attachmentFolderPath;
+    // @ts-ignore - vault.config 为动态配置对象，无公开类型定义
+    const assetFolder: string = this.app.vault.config.attachmentFolderPath;
 
     dbg(t("attachmentPath.debug.original", { path: assetFolder }));
 
@@ -503,7 +499,7 @@ export default class imageAutoUploadPlugin extends Plugin {
       return null;
     }
 
-    const parentPath = activeFile.parent.path;
+    const parentPath = activeFile.parent?.path ?? "";
 
     // 如果assetFolder为空或未设置，则使用活动文件的父目录
     if (!assetFolder || assetFolder.trim() === "") {
@@ -744,8 +740,8 @@ export default class imageAutoUploadPlugin extends Plugin {
       }
 
       new Notice(t("upload.complete"));
-    } catch (error) {
-      error(t("upload.failed") + ":", error);
+    } catch (e) {
+      error(t("upload.failed") + ":", e);
       new Notice(t("upload.failedNotice"));
     }
   }

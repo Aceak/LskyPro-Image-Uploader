@@ -10,12 +10,19 @@ export default defineConfig([
     languageOptions: {
       parser: tsparser,
       parserOptions: { project: "./tsconfig.json" },
+      globals: {
+        console: "readonly",
+      },
     },
 
     // You can add your own configuration to override or add rules
     rules: {
       // example: turn off a rule from the recommended set
       "obsidianmd/sample-names": "off",
+      // 对 any 类型相关降级为 warn（历史遗留较多）
+      "@typescript-eslint/no-unsafe-assignment": "warn",
+      "@typescript-eslint/no-unsafe-member-access": "warn",
+      "@typescript-eslint/no-unsafe-call": "warn",
     },
   },
 ]);

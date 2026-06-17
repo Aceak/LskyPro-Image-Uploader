@@ -5,7 +5,7 @@
 import { App, PluginSettingTab, Setting, Notice } from "obsidian";
 import imageAutoUploadPlugin from "./main";
 import { t, TranslationKeys } from "./lang/i18n";
-import { error, dbg, debugState } from "./utils";
+import { debugState } from "./utils";
 
 /**
  * 插件设置接口

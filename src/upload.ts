@@ -170,8 +170,8 @@ export class LskyProUploader {
    * @returns 封装后的上传结果
    */
   private async uploadRawFile(file: File): Promise<UploadResult> {
-    
-    
+
+
     try {
       // 验证V2版本必需参数
       if (this.version === "v2" && !this.settings.storage_id) {
@@ -181,9 +181,39 @@ export class LskyProUploader {
       // 获取请求选项
       const requestOptions = this.getRequestOptions(file);
       const { body, contentType } = await buildMultipartBody(requestOptions.body);
-      
-      dbg("[Upload] Request Body:", body);
-      
+
+      // ── 调试：请求信息 ──
+      dbg("========== [Upload] Request Start ==========");
+      dbg("[Upload] API Version:", this.version);
+      dbg("[Upload] URL:", this.lskyUrl);
+      dbg("[Upload] Method: POST");
+
+      // 请求头（token 脱敏）
+      Object.entries(requestOptions.headers).forEach(([key, value]) => {
+        if (key.toLowerCase() === "authorization") {
+          const masked = value.length > 12
+            ? value.substring(0, 10) + "..." + value.substring(value.length - 4)
+            : "***";
+          dbg(`[Upload] Header: ${key} = ${masked}`);
+        } else {
+          dbg(`[Upload] Header: ${key} = ${value}`);
+        }
+      });
+      dbg(`[Upload] Header: Content-Type = ${contentType}`);
+
+      // 请求体字段（文件只显示名字/大小/类型，非文件字段显示完整值）
+      const fd = requestOptions.body;
+      const fdIter = fd as unknown as { entries(): IterableIterator<[string, FormDataEntryValue]> };
+      for (const [field, value] of fdIter.entries()) {
+        if (value instanceof File) {
+          dbg(`[Upload] FormData: ${field} = <File> name="${value.name}" size=${(value.size / 1024).toFixed(1)}KB type="${value.type}"`);
+        } else {
+          dbg(`[Upload] FormData: ${field} = ${String(value)}`);
+        }
+      }
+      dbg("[Upload] Body size:", (body instanceof ArrayBuffer ? body.byteLength : "unknown"), "bytes");
+      dbg("========== [Upload] Request End ==========");
+
       // 发送请求到LskyPro服务器
       const res = await requestUrl({
         url: this.lskyUrl,
@@ -195,8 +225,16 @@ export class LskyProUploader {
         }
       });
 
+      // ── 调试：响应信息 ──
+      dbg("========== [Upload] Response Start ==========");
       dbg("[Upload] Response Status:", res.status);
+      try {
+        dbg("[Upload] Response Headers:", JSON.stringify(res.headers));
+      } catch {
+        dbg("[Upload] Response Headers:", res.headers);
+      }
       dbg("[Upload] Response Body:", res.text);
+      dbg("========== [Upload] Response End ==========");
 
       // 检查HTTP响应状态
       if (res.status < 200 || res.status >= 300) {
@@ -347,7 +385,7 @@ export class LskyProUploader {
     concurrency: number = 3
   ): Promise<UploadResult> {
     dbg(t("main.uploadWithLimit"))
-    const results: (UploadResult | null)[] = new Array(inputs.length).fill(null);
+    const results: (UploadResult | null)[] = new Array<UploadResult | null>(inputs.length).fill(null);
     const total = inputs.length;
     let current = 0;
     let successCount = 0;

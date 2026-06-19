@@ -293,3 +293,9 @@ export function getConcurrencyValue(mode: string | number | undefined): number {
 
   return map[mode] ?? 3;
 }
+
+/** 将设置中存储的上传器标识转为内部版本号 */
+export type ApiVersion = "v1" | "v2";
+export function parseUploaderVersion(raw: string): ApiVersion {
+  return raw === "LskyPro-v1" ? "v1" : "v2";
+}

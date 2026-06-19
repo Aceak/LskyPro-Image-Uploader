@@ -19,6 +19,7 @@ import {
   getPlatformEnv,
   isValidImageExtension,
   getConcurrencyValue,
+  parseUploaderVersion,
   dbg,
   warn,
   error,
@@ -60,7 +61,7 @@ export default class imageAutoUploadPlugin extends Plugin {
     debugState.enabled = this.settings.debug;
 
     if (this.settings.debug) {
-      console.debug("[LskyPro]" + t("main.debugEnabled"));
+      dbg(t("main.debugEnabled"));
     }
   }
 
@@ -69,11 +70,8 @@ export default class imageAutoUploadPlugin extends Plugin {
   }
 
   reinitUploader() {
-    const version = this.settings.uploader === "LskyPro-v1" ? "v1" : "v2";
-
-    if (!this.uploader) {
-      this.uploader = new LskyProUploader(this.settings, this.app, version);
-    }
+    const version = parseUploaderVersion(this.settings.uploader);
+    this.uploader = new LskyProUploader(this.settings, this.app, version);
   }
 
   onunload() {}
@@ -488,7 +486,7 @@ export default class imageAutoUploadPlugin extends Plugin {
 
   //获取附件路径（相对路径）
   getAttachmentFolderPath() {
-    // @ts-ignore - vault.config 为动态配置对象，无公开类型定义
+    // @ts-ignore - vault.config 无公开类型定义
     const assetFolder: string = this.app.vault.config.attachmentFolderPath;
 
     dbg(t("attachmentPath.debug.original", { path: assetFolder }));
@@ -708,9 +706,10 @@ export default class imageAutoUploadPlugin extends Plugin {
       }
 
       const urls = [...(res.result || [])];
+      // 过滤掉失败项再写入上传历史
       this.settings.uploadedImages = [
         ...(this.settings.uploadedImages || []),
-        ...urls,
+        ...urls.filter((u): u is string => u !== null),
       ];
       await this.saveSettings();
 
@@ -760,7 +759,7 @@ export default class imageAutoUploadPlugin extends Plugin {
           }
         });
         this.helper.setValue(content);
-        this.appendUploadedUrls(res.result);
+        this.appendUploadedUrls((res.result || []).filter((u): u is string => u !== null));
         new Notice(t("upload.complete"));
       } else {
         new Notice(t("upload.failed"));
@@ -772,11 +771,12 @@ export default class imageAutoUploadPlugin extends Plugin {
   }
 
   // 将上传结果追加保存
-  appendUploadedUrls(urls: string[] = []) {
-    if (!urls.length) return;
+  appendUploadedUrls(urls: (string | null)[] = []) {
+    const validUrls = urls.filter((u): u is string => u !== null);
+    if (!validUrls.length) return;
     this.settings.uploadedImages = [
       ...(this.settings.uploadedImages || []),
-      ...urls,
+      ...validUrls,
     ];
     void this.saveSettings();
   }

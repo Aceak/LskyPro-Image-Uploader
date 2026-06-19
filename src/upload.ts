@@ -5,17 +5,17 @@
 import { App, TFile, normalizePath, Notice, requestUrl } from "obsidian";
 import { PluginSettings, getSettingLabel } from "./setting";
 import { t } from "./lang/i18n";
-import { dbg, getMimeTypeFromExt } from "./utils";
+import { dbg, getMimeTypeFromExt, parseUploaderVersion } from "./utils";
 
 
 /**
  * 上传结果类型定义
  */
 type UploadResult = {
-  success: boolean;      // 上传是否成功
-  url?: string;          // 上传成功后的图片URL
-  result?: string[];     // 结果数组
-  msg?: string | null;   // 消息
+  success: boolean;         // 上传是否成功
+  url?: string;             // 上传成功后的图片URL
+  result?: (string | null)[]; // 结果数组（null 表示该项失败，保持与输入顺序一致）
+  msg?: string | null;      // 消息
 };
 
 /**
@@ -52,11 +52,14 @@ function parseUploadResult(response: LskyApiResponse): ParsedResult {
 
   const { status, message, data } = response;
 
-  // 判断上传是否成功
+  // 判断上传是否成功（兼容 V1/V2 多种状态格式）
   const success =
     status === true ||
     status === "success" ||
-    status === 200;
+    status === "true" ||
+    status === 200 ||
+    status === 1 ||
+    Boolean(status);
 
   // 提取图片URL（兼容V1和V2版本）
   const url = data?.public_url || data?.links?.url || null;
@@ -122,16 +125,18 @@ export class LskyProUploader {
 
     // 切换 API 版本时同步更新内部 version 标识
     // settings.uploader 存的是 "LskyPro-v1"/"LskyPro-v2"，要转为 "v1"/"v2"
-    if (key === "uploader") {
-      this.version = (value as string) === "LskyPro-v1" ? "v1" : "v2";
+    if (key === "uploader" && typeof value === "string") {
+      this.version = parseUploaderVersion(value);
     }
 
     const label = getSettingLabel(key) ?? key;
 
     dbg(t("setting.updateConfig") + `${label} = ${String(value)}`);
 
-    // 重新初始化配置（URL、Token）
-    this.initializeConfig();
+    // 仅在影响 URL/Token 的设置变更时重新初始化
+    if (key === "uploadServer" || key === "token" || key === "uploader") {
+      this.initializeConfig();
+    }
   }
 
   /**
@@ -183,19 +188,21 @@ export class LskyProUploader {
       const requestOptions = this.getRequestOptions(file);
       const { body, contentType } = await buildMultipartBody(requestOptions.body);
       
-      // ── 调试：请求信息 ──
-      dbg(`[Upload] -> ${this.lskyUrl} (${this.version})`);
-      const fd = requestOptions.body;
-      const fdIter = fd as unknown as { entries(): IterableIterator<[string, FormDataEntryValue]> };
-      const fields: string[] = [];
-      for (const [field, value] of fdIter.entries()) {
-        if (value instanceof File) {
-          fields.push(`${field}=<File "${value.name}" ${(value.size / 1024).toFixed(1)}KB>`);
-        } else {
-          fields.push(`${field}=${String(value)}`);
+      // ── 调试：请求信息（try-catch 防止调试代码打断上传）──
+      try {
+        dbg(`[Upload] -> ${this.lskyUrl} (${this.version})`);
+        const fd = requestOptions.body;
+        const fdIter = fd as unknown as { entries(): IterableIterator<[string, FormDataEntryValue]> };
+        const parts: string[] = [];
+        for (const [field, value] of fdIter.entries()) {
+          if (value instanceof File) {
+            parts.push(`${field}=<File "${value.name}" ${(value.size / 1024).toFixed(1)}KB>`);
+          } else {
+            parts.push(`${field}=${String(value)}`);
+          }
         }
-      }
-      dbg(`[Upload] FormData: { ${fields.join(", ")} }`);
+        dbg(`[Upload] FormData: { ${parts.join(", ")} }`);
+      } catch { /* 调试代码不应影响上传 */ }
 
       // 发送请求到LskyPro服务器
       const res = await requestUrl({
@@ -209,7 +216,7 @@ export class LskyProUploader {
       });
 
       // ── 调试：响应信息 ──
-      dbg(`[Upload] <- ${res.status} ${res.text}`);
+      dbg(`[Upload] <- ${res.status} ${res.text ?? ""}`);
 
       // 检查HTTP响应状态
       if (res.status < 200 || res.status >= 300) {
@@ -417,13 +424,14 @@ export class LskyProUploader {
           total,
           failedCount: failed.length,
         }),
-        result: validResults.filter(r => r.success).map(r => r.url),
+        // 保留 null 占位，保持与输入数组的索引对齐
+        result: validResults.map(r => r.success ? (r.url ?? null) : null),
       };
     }
 
     return {
       success: true,
-      result: validResults.map(r => r.url),
+      result: validResults.map(r => r.url ?? null),
       msg: t('upload.summary.allCompleted', { total }),
     };
   }

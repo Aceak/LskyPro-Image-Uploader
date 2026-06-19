@@ -69,7 +69,7 @@ export default class imageAutoUploadPlugin extends Plugin {
   }
 
   reinitUploader() {
-    const version = this.settings.uploader === "LskyPro-V1" ? "v1" : "v2";
+    const version = this.settings.uploader === "LskyPro-v1" ? "v1" : "v2";
 
     if (!this.uploader) {
       this.uploader = new LskyProUploader(this.settings, this.app, version);

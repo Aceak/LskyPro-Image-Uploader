@@ -1,14 +1,15 @@
 {
   "compilerOptions": {
-    "module": "ESNext",
     "target": "es2016",
+    "module": "ES2022",
+    "moduleResolution": "bundler",
     "allowJs": true,
     "noImplicitAny": true,
-    "moduleResolution": "bundler",
     "importHelpers": true,
-    "lib": ["dom", "scripthost", "es2015", "es2020", "ESNext"],
+    "lib": ["dom", "scripthost", "ESNext"],
     "rootDir": "src",
-    "outDir": "dist"
+    "outDir": "dist",
+    "skipLibCheck": true
   },
-  "include": ["**/*.ts"]
+  "include": ["src/**/*.ts"]
 }

@@ -216,7 +216,7 @@ export default class imageAutoUploadPlugin extends Plugin {
 
               const url = res.url || "";
               this.embedMarkDownImage(editor, pasteId, url);
-              this.appendUploadedUrls(res.result);
+              this.appendUploadedUrls(res.result ?? []);
             } catch (err) {
               this.handleFailedUpload(editor, pasteId, err instanceof Error ? err.message : String(err));
             }

@@ -56,10 +56,7 @@ function parseUploadResult(response: LskyApiResponse): ParsedResult {
   const success =
     status === true ||
     status === "success" ||
-    status === "true" ||
-    status === 200 ||
-    status === 1 ||
-    Boolean(status);
+    status === 200;
 
   // 提取图片URL（兼容V1和V2版本）
   const url = data?.public_url || data?.links?.url || null;

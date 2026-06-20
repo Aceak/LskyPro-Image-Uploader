@@ -5,7 +5,7 @@
 import { App, PluginSettingTab, Setting, Notice } from "obsidian";
 import imageAutoUploadPlugin from "./main";
 import { t, TranslationKeys } from "./lang/i18n";
-import { debugState } from "./utils";
+import { debugState, UPLOADER_V1, UPLOADER_V2, parseUploaderVersion, type UploaderSetting } from "./utils";
 
 /**
  * 插件设置接口
@@ -19,7 +19,7 @@ export interface PluginSettings {
   token: string; // 认证令牌
   storage_id: string; // 存储ID（V2版本）
   strategy_id: string; // 策略ID（V1版本）
-  uploader: string; // 上传器类型（V1或V2）
+  uploader: UploaderSetting; // 上传器版本（V1或V2）
   workOnNetWork: boolean; // 是否处理网络图片
   newWorkBlackDomains: string; // 网络黑名单域名
   deleteSource: boolean; // 上传后删除源文件
@@ -35,7 +35,7 @@ export const DEFAULT_SETTINGS: PluginSettings = {
   debug: false, // 默认禁用调试模式
   uploadByClipSwitch: true, // 默认启用剪贴板自动上传
   uploadAttachmentsSwitch: true, // 默认启用附件自动上传
-  uploader: "LskyPro-v2", // 默认使用V2版本上传器
+  uploader: UPLOADER_V2, // 默认使用V2版本上传器
   token: "", // 默认空令牌
   storage_id: "", // 默认空存储ID
   strategy_id: "", // 默认空策略ID
@@ -139,15 +139,15 @@ export class SettingTab extends PluginSettingTab {
       .setDesc(t("settings.defaultUploader.desc"))
       .addDropdown(cb =>
         cb
-          .addOption("LskyPro-v2", "V2")
-          .addOption("LskyPro-v1", "V1")
+          .addOption(UPLOADER_V2, "V2")
+          .addOption(UPLOADER_V1, "V1")
           .setValue(this.plugin.settings.uploader)
           .onChange(async value => {
-            this.plugin.settings.uploader = value;
+            const v = value as UploaderSetting;
+            this.plugin.settings.uploader = v;
             this.display();
             await this.plugin.saveSettings();
-            // 重新初始化上传器以应用新版本
-            this.plugin.uploader?.updateSetting("uploader", value);
+            this.plugin.uploader?.updateSetting("uploader", v);
           })
       );
 
@@ -182,7 +182,7 @@ export class SettingTab extends PluginSettingTab {
       );
 
     // 根据版本显示对应的存储ID设置
-    if (this.plugin.settings.uploader === "LskyPro-v2") {
+    if (parseUploaderVersion(this.plugin.settings.uploader) === "v2") {
       new Setting(containerEl)
         .setName(t("settings.storageId"))
         .setDesc(t("settings.storageId.desc"))
@@ -193,11 +193,10 @@ export class SettingTab extends PluginSettingTab {
             .onChange(async key => {
               this.plugin.settings.storage_id = key;
               await this.plugin.saveSettings();
-              // 重新初始化上传器以应用新存储ID
               this.plugin.uploader?.updateSetting("storage_id", key);
             })
         );
-    } else if (this.plugin.settings.uploader === "LskyPro-v1") {
+    } else {
       new Setting(containerEl)
         .setName(t("settings.strategyId"))
         .setDesc(t("settings.strategyId.desc"))
@@ -208,7 +207,6 @@ export class SettingTab extends PluginSettingTab {
             .onChange(async key => {
               this.plugin.settings.strategy_id = key;
               await this.plugin.saveSettings();
-              // 重新初始化上传器以应用新策略ID
               this.plugin.uploader?.updateSetting("strategy_id", key);
             })
         );

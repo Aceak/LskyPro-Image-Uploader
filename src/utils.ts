@@ -294,8 +294,13 @@ export function getConcurrencyValue(mode: string | number | undefined): number {
   return map[mode] ?? 3;
 }
 
-/** 将设置中存储的上传器标识转为内部版本号（大小写不敏感，兼容旧版大写 V） */
+/** 上传器版本标识常量——所有版本判断都走这里，不再硬编码字符串 */
+export const UPLOADER_V1 = "LskyPro-v1" as const;
+export const UPLOADER_V2 = "LskyPro-v2" as const;
+export type UploaderSetting = typeof UPLOADER_V1 | typeof UPLOADER_V2;
 export type ApiVersion = "v1" | "v2";
-export function parseUploaderVersion(raw: string): ApiVersion {
-  return raw.toLowerCase() === "lskypro-v1" ? "v1" : "v2";
+
+/** 将设置字段转为内部版本号（大小写不敏感，兼容历史大写，null 安全） */
+export function parseUploaderVersion(raw: string | null | undefined): ApiVersion {
+  return String(raw ?? "").toLowerCase() === "lskypro-v1" ? "v1" : "v2";
 }

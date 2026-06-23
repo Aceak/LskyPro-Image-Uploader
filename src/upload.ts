@@ -183,11 +183,15 @@ export class LskyProUploader {
 
       // 获取请求选项
       const requestOptions = this.getRequestOptions(file);
+      // ── 快照 URL/Token，防止 buildMultipartBody yield 期间 settings onChange 覆盖 ──
+      const snapUrl = this.lskyUrl;
+      const snapVersion = this.version;
+      const requestHeaders = { ...requestOptions.headers };
       const { body, contentType } = await buildMultipartBody(requestOptions.body);
-      
+
       // ── 调试：请求信息（try-catch 防止调试代码打断上传）──
       try {
-        dbg(`[Upload] -> ${this.lskyUrl} (${this.version})`);
+        dbg(`[Upload] -> ${snapUrl} (${snapVersion})`);
         const fd = requestOptions.body;
         const fdIter = fd as unknown as { entries(): IterableIterator<[string, FormDataEntryValue]> };
         const parts: string[] = [];
@@ -201,13 +205,13 @@ export class LskyProUploader {
         dbg(`[Upload] FormData: { ${parts.join(", ")} }`);
       } catch { /* 调试代码不应影响上传 */ }
 
-      // 发送请求到LskyPro服务器
+      // 发送请求到LskyPro服务器（使用快照值）
       const res = await requestUrl({
-        url: this.lskyUrl,
+        url: snapUrl,
         method: "POST",
         body,
         headers: {
-          ...requestOptions.headers,
+          ...requestHeaders,
           "Content-Type": contentType
         }
       });
@@ -339,13 +343,24 @@ export class LskyProUploader {
       // 并行上传所有文件
       const results = await Promise.all(files.map((file) => this.uploadRawFile(file)));
 
-      // 检查是否有上传失败的文件
-      const failed = results.find((res) => !res.success);
-      if (failed) throw new Error(failed.msg || t('response.someFailed'));
+      // 收集结果：保持与输入数组索引对齐（null 占位表示失败）
+      const urls = results.map((res) => res.success ? (res.url ?? null) : null);
+      const successCount = urls.filter((u): u is string => u !== null).length;
+      const failedCount = results.length - successCount;
 
-      // 收集所有成功上传的URL
-      const urls = results.map((res) => res.url || '').filter(Boolean);
-      return { success: true, result: urls };
+      if (failedCount > 0) {
+        return {
+          success: false,
+          result: urls,
+          msg: t('upload.summary.completed', {
+            successCount,
+            total: results.length,
+            failedCount,
+          }),
+        };
+      }
+
+      return { success: true, result: urls.filter((u): u is string => u !== null) };
     } catch (err) {
       const message =
         err instanceof Error ? err.message : t("upload.batchFailed");
@@ -433,31 +448,6 @@ export class LskyProUploader {
     };
   }
 
-  /**
-   * 上传剪贴板中的图片
-   * @param evt 剪贴板事件对象，包含要上传的图片数据
-   * @returns 上传结果对象，成功时包含图片URL
-   */
-  async uploadFromClipboard(evt: ClipboardEvent): Promise<UploadResult> {
-    dbg(t("main.uploadFromClipboard"))
-    try {
-      // 验证V2版本必需参数
-      if (this.version === "v2" && !this.settings.storage_id) {
-        return { success: false, msg: t("upload.v2.storageIdRequired") };
-      }
-
-      const file = evt.clipboardData?.files?.[0];
-      if (!file) throw new Error(t("upload.clipboardEmpty"));
-
-      return await this.uploadSingleFile(file);
-    } catch (err) {
-      const message = err instanceof Error
-        ? err.message
-        : t("upload.clipboardFailed");
-
-      return { success: false, msg: message };
-    }
-  }
 }
 
 /**

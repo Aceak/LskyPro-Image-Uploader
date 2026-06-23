@@ -10,6 +10,7 @@ import {
   addIcon,
   requestUrl,
   MarkdownFileInfo,
+  normalizePath,
 } from "obsidian";
 
 import {
@@ -20,6 +21,8 @@ import {
   isValidImageExtension,
   getConcurrencyValue,
   parseUploaderVersion,
+  getExtname,
+  encodeMarkdownUrl,
   dbg,
   warn,
   error,
@@ -203,22 +206,53 @@ export default class imageAutoUploadPlugin extends Plugin {
 
           // ② 检查是否为本地剪贴板图片（如截图）
           if (this.canUpload(clipboardData)) {
+            const clipboardFile = clipboardData.files[0];
+            if (!clipboardFile) {
+              new Notice(t("upload.clipboardEmpty"));
+              return;
+            }
+
+            // 提前读取文件数据，防止 preventDefault 后数据丢失
+            const fileBuffer = await clipboardFile.arrayBuffer();
+
+            // 先保存到本地——成功后再 preventDefault，失败则让浏览器正常处理
+            const savedPath = await this.saveImageToVault(fileBuffer, clipboardFile.name);
+            if (!savedPath) {
+              new Notice(t("upload.failedNotice"));
+              return;
+            }
+
             evt.preventDefault();
-            const pasteId = Math.random().toString(36).substring(2, 8);
-            this.insertTemporaryText(editor, pasteId);
+
+            // 先插入本地引用，记录光标所在行
+            editor.replaceSelection(`![](${encodeMarkdownUrl(savedPath)})\n`);
+            const insertLine = editor.getCursor().line;
+            new Notice(t("upload.uploading"));
 
             try {
-              const res = await this.uploader.uploadFromClipboard(evt);
+              const res = await this.uploader.uploadSingleFile(clipboardFile);
               if (!res.success) {
-                this.handleFailedUpload(editor, pasteId, res.msg);
+                // 上传失败：保留本地引用不动，弹错误提示
+                new Notice(t("upload.failedShort") + ": " + (res.msg || t("upload.exception")));
+                error(t("upload.error") + ":" + (res.msg ?? ""));
                 return;
               }
 
               const url = res.url || "";
-              this.embedMarkDownImage(editor, pasteId, url);
-              this.appendUploadedUrls(res.result ?? []);
+              // 上传成功：替换本地引用为远端 URL
+              imageAutoUploadPlugin.replaceFirstOccurrence(
+                editor,
+                `![](${encodeMarkdownUrl(savedPath)})`,
+                `![](${url})`,
+                insertLine
+              );
+              this.appendUploadedUrls(res.url ? [res.url] : []);
+              new Notice(t("upload.success"));
             } catch (err) {
-              this.handleFailedUpload(editor, pasteId, err instanceof Error ? err.message : String(err));
+              // 远端上传异常：保留本地引用不动
+              const reason = err instanceof Error ? err.message : String(err);
+              new Notice(t("upload.failedShort") + ": " + reason);
+              error(t("upload.error") + ":", err);
             }
           }
         }
@@ -239,23 +273,80 @@ export default class imageAutoUploadPlugin extends Plugin {
             return;
           }
 
-          const files = evt.dataTransfer?.files;
-          if (!files?.length || !files[0].type.startsWith("image")) return;
+          const dropFiles = evt.dataTransfer?.files;
+          if (!dropFiles?.length || !dropFiles[0].type.startsWith("image")) return;
 
+          // 提前读取所有文件数据
+          const droppedFiles = Array.from(dropFiles);
+          const fileBuffers: ArrayBuffer[] = await Promise.all(
+            droppedFiles.map(f => f.arrayBuffer())
+          );
+
+          // 先全部保存到本地，插入本地引用，记录每个文件的插入行
+          const savedPaths: (string | null)[] = [];
+          const insertLines: (number | undefined)[] = [];
+          const uploadQueue: { file: File; index: number }[] = [];
+          for (let i = 0; i < droppedFiles.length; i++) {
+            const savedPath = await this.saveImageToVault(fileBuffers[i], droppedFiles[i].name);
+            savedPaths.push(savedPath);
+            if (savedPath) {
+              editor.replaceSelection(`![](${encodeMarkdownUrl(savedPath)})\n`);
+              insertLines.push(editor.getCursor().line);
+              uploadQueue.push({ file: droppedFiles[i], index: i });
+            } else {
+              insertLines.push(undefined);
+            }
+          }
+
+          // 全部保存失败则让浏览器正常处理；成功至少一个才拦截默认行为
+          if (savedPaths.every(p => p === null)) {
+            new Notice(t("upload.failedNotice"));
+            return;
+          }
           evt.preventDefault();
+
           new Notice(t("upload.uploading"));
 
-          const res = await this.uploader.uploadFiles(Array.from(files));
+          try {
+            // 仅上传本地保存成功的文件，避免幽灵 URL
+            const res = await this.uploader.uploadFiles(uploadQueue.map(q => q.file));
 
-          if (res.success && res.result?.length) {
-            for (const url of res.result) {
-              editor.replaceSelection(`![](${url})\n`);
+            // 处理结果：将 upload 返回的 URL 映射回原始 savedPaths 索引
+            const resultUrls: (string | null)[] = new Array<(string | null)>(droppedFiles.length).fill(null);
+            if (res.result) {
+              for (let j = 0; j < uploadQueue.length && j < res.result.length; j++) {
+                resultUrls[uploadQueue[j].index] = res.result[j];
+              }
             }
-            this.appendUploadedUrls(res.result);
-            new Notice(t("upload.success"));
-          } else {
-            new Notice(t("upload.failedNotice"));
-            error(t("upload.error") + ":" + res.msg);
+
+            // 处理结果：即使部分失败，也要替换成功的 URL
+            const hasAnyResult = resultUrls.some(u => u !== null);
+            if (hasAnyResult) {
+              for (let i = 0; i < resultUrls.length; i++) {
+                if (resultUrls[i] && savedPaths[i]) {
+                  imageAutoUploadPlugin.replaceFirstOccurrence(
+                    editor,
+                    `![](${encodeMarkdownUrl(savedPaths[i])})`,
+                    `![](${resultUrls[i]})`,
+                    insertLines[i]
+                  );
+                }
+              }
+              this.appendUploadedUrls(resultUrls);
+              if (res.success) {
+                new Notice(t("upload.success"));
+              } else {
+                new Notice(t("upload.someFailed"));
+              }
+            } else {
+              new Notice(t("upload.failedShort") + ": " + (res.msg || t("upload.exception")));
+              error(t("upload.error") + ":" + (res.msg ?? ""));
+            }
+          } catch (err) {
+            // 远端上传异常：保留本地引用
+            const reason = err instanceof Error ? err.message : String(err);
+            new Notice(t("upload.failedShort") + ": " + reason);
+            error(t("upload.error") + ":", err);
           }
         }
       )
@@ -297,6 +388,7 @@ export default class imageAutoUploadPlugin extends Plugin {
           }
         } catch (e) {
           error(t("upload.error") + ":" + e);
+          new Notice(t("upload.failedNotice"));
         }
       });
       // 注册create事件
@@ -429,6 +521,7 @@ export default class imageAutoUploadPlugin extends Plugin {
       imageArray.length,
       "个图片"
     );
+    // 重新读取文档内容（包含并发编辑）
     let value = this.helper.getValue();
     dbg(
       "[downloadAllImageFiles] 原始 Markdown 内容长度:",
@@ -438,7 +531,7 @@ export default class imageAutoUploadPlugin extends Plugin {
 
     imageArray.forEach((image, index) => {
       const originalLength = value.length;
-      value = value.replace(image.source, `![](${encodeURI(image.path)})`);
+      value = value.replaceAll(image.source, `![](${encodeMarkdownUrl(image.path)})`);
 
       if (value.length !== originalLength) {
         dbg(
@@ -574,6 +667,59 @@ export default class imageAutoUploadPlugin extends Plugin {
       dbg(t("download.debug.exception", { url, error: errorMsg }));
       error(t("download.failed") + ":" + errorMsg);
       return { ok: false, msg: errorMsg };
+    }
+  }
+
+  // 将图片数据保存到 Vault 附件目录
+  // 返回保存路径，失败返回 null
+  async saveImageToVault(data: ArrayBuffer, fileName: string): Promise<string | null> {
+    try {
+      const folderPath = this.getAttachmentFolderPath();
+      if (!folderPath) {
+        new Notice(t("main.noAttachmentFolder"));
+        error("[saveImageToVault] No attachment folder path");
+        return null;
+      }
+
+      // 确保附件文件夹存在
+      const normFolderPath = normalizePath(folderPath);
+      const folder = this.app.vault.getAbstractFileByPath(normFolderPath);
+      if (!folder) {
+        await this.app.vault.createFolder(normFolderPath);
+      }
+
+      // 解析文件名和扩展名（大小写不敏感）
+      const ext = getExtname(fileName) || ".png";
+      const lowerName = fileName.toLowerCase();
+      const lowerExt = ext; // getExtname 已返回小写
+      const dotIndex = lowerName.lastIndexOf(lowerExt);
+      const baseName = dotIndex > 0 ? fileName.slice(0, dotIndex) : fileName;
+
+      // 处理文件名冲突：已存在则追加数字后缀（上限 1000 防止无限循环）
+      let saveName = fileName;
+      let counter = 0;
+      const MAX_CONFLICT = 1000;
+      while (counter < MAX_CONFLICT && this.app.vault.getAbstractFileByPath(
+        normalizePath(folderPath + "/" + saveName)
+      )) {
+        counter++;
+        saveName = `${baseName}-${counter}${ext}`;
+      }
+      if (counter >= MAX_CONFLICT) {
+        error("[saveImageToVault] Too many file conflicts:", saveName);
+        return null;
+      }
+
+      const fullPath = normalizePath(`${folderPath}/${saveName}`);
+      await this.app.vault.createBinary(fullPath, data, {
+        ctime: Date.now(),
+        mtime: Date.now(),
+      });
+      dbg("[saveImageToVault] Saved:", fullPath);
+      return fullPath;
+    } catch (e) {
+      error("[saveImageToVault] Failed:", e);
+      return null;
     }
   }
 
@@ -722,17 +868,17 @@ export default class imageAutoUploadPlugin extends Plugin {
         }
       });
 
-      // 使用精确替换，确保每个图片源只替换一次
-      // 遍历所有匹配的图片源并替换
+      // 重新读取文档内容（包含并发编辑），然后替换所有图片源
+      content = this.helper.getValue();
       for (const [source, newUrl] of urlMap.entries()) {
-        // 每个source都是从文档中唯一匹配到的完整图片标记，直接替换即可
-        content = content.replace(source, `![](${newUrl})`);
+        content = content.replaceAll(source, `![](${newUrl})`);
       }
-
       this.helper.setValue(content);
 
       if (this.settings.deleteSource) {
         for (const image of imageList) {
+          // 仅删除上传成功的文件（存在于 urlMap 中的）
+          if (!urlMap.has(image.source)) continue;
           const fileDel = this.app.vault.getAbstractFileByPath(image.obspath);
           if (fileDel) await this.app.fileManager.trashFile(fileDel);
         }
@@ -749,18 +895,23 @@ export default class imageAutoUploadPlugin extends Plugin {
   async handleNetworkPasteImages(imageList: PastedImageItem[]) {
     try {
       const res = await this.uploader.uploadFiles(imageList.map(i => i.path));
-      if (res.success && res.result) {
+      if (res.result && res.result.length > 0) {
+        // 重新读取文档内容（包含并发编辑）
         let content = this.helper.getValue();
         const urls = [...res.result];
         imageList.forEach(img => {
           const newUrl = urls.shift();
           if (newUrl) {
-            content = content.replace(img.source, `![${img.name}](${newUrl})`);
+            content = content.replaceAll(img.source, `![${img.name}](${newUrl})`);
           }
         });
         this.helper.setValue(content);
         this.appendUploadedUrls((res.result || []).filter((u): u is string => u !== null));
-        new Notice(t("upload.complete"));
+        if (!res.success) {
+          new Notice(t("upload.someFailed"));
+        } else {
+          new Notice(t("upload.complete"));
+        }
       } else {
         new Notice(t("upload.failed"));
       }
@@ -795,87 +946,30 @@ export default class imageAutoUploadPlugin extends Plugin {
     return text ? this.settings.uploadByClipSwitch : true;
   }
 
-  // 上传文件并嵌入 Imgur 图片
-  async uploadFileAndEmbedImgurImage(
-    editor: Editor,
-    callback: (editor: Editor, pasteId: string) => Promise<string>,
-    clipboardData: DataTransfer
-  ) {
-    const pasteId = (Math.random() + 1).toString(36).substring(2, 7);
-
-    this.insertTemporaryText(editor, pasteId);
-
-    try {
-      const url = await callback(editor, pasteId);
-      this.embedMarkDownImage(editor, pasteId, url);
-    } catch (e) {
-      this.handleFailedUpload(editor, pasteId, e);
-    }
-  }
-
-  // 插入临时文本
-  insertTemporaryText(editor: Editor, pasteId: string) {
-    let progressText = imageAutoUploadPlugin.progressTextFor(pasteId);
-    editor.replaceSelection(progressText + "\n");
-  }
-
-  private static progressTextFor(id: string) {
-    return t("upload.uploading") + id;
-  }
-
-  // 嵌入 Markdown 图片
-  embedMarkDownImage(editor: Editor, pasteId: string, imageUrl: string) {
-    let progressText = imageAutoUploadPlugin.progressTextFor(pasteId);
-    let markDownImage = `![](${imageUrl})`;
-
-    imageAutoUploadPlugin.replaceFirstOccurrence(
-      editor,
-      progressText,
-      markDownImage
-    );
-  }
-
-  // 处理上传失败
-  handleFailedUpload(editor: Editor, pasteId: string, reason: unknown) {
-    let msg = "";
-
-    if (reason instanceof Error) {
-      msg = reason.message;
-    } else if (typeof reason === "string") {
-      msg = reason;
-    } else {
-      try {
-        msg = JSON.stringify(reason);
-      } catch {
-        msg = "Unknown error";
-      }
-    }
-
-    new Notice(msg);
-    error(t("upload.requestException") + ": " + msg);
-
-    const progressText = imageAutoUploadPlugin.progressTextFor(pasteId);
-    imageAutoUploadPlugin.replaceFirstOccurrence(
-      editor,
-      progressText,
-      t("upload.failedNotice")
-    );
-  }
-
-  // 替换第一个匹配项
+  // 替换匹配项：优先从 fromLine 向前查找，未指定则从底部向上（优先匹配刚插入的文本）
   static replaceFirstOccurrence(
     editor: Editor,
     target: string,
-    replacement: string
+    replacement: string,
+    fromLine?: number
   ) {
     let lines = editor.getValue().split("\n");
-    for (let i = 0; i < lines.length; i++) {
+    if (fromLine !== undefined && fromLine >= 0 && fromLine < lines.length) {
+      // 从指定行向前搜索
+      for (let i = fromLine; i < lines.length; i++) {
+        let ch = lines[i].indexOf(target);
+        if (ch != -1) {
+          editor.replaceRange(replacement, { line: i, ch: ch }, { line: i, ch: ch + target.length });
+          return;
+        }
+      }
+    }
+    // 默认从底部向上搜索（新插入文本更可能在文档末尾）
+    for (let i = lines.length - 1; i >= 0; i--) {
       let ch = lines[i].indexOf(target);
       if (ch != -1) {
-        let from = { line: i, ch: ch };
-        let to = { line: i, ch: ch + target.length };
-        editor.replaceRange(replacement, from, to);
-        break;
+        editor.replaceRange(replacement, { line: i, ch: ch }, { line: i, ch: ch + target.length });
+        return;
       }
     }
   }

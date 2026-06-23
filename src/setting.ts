@@ -95,6 +95,13 @@ export class SettingTab extends PluginSettingTab {
   }
 
   /**
+   * 设置标签页关闭时自动保存——防止失焦文本输入丢失未提交的更改
+   */
+  hide(): void {
+    void this.plugin.saveSettings();
+  }
+
+  /**
    * 显示设置面板
    * 创建并渲染所有设置项
    */
@@ -102,7 +109,7 @@ export class SettingTab extends PluginSettingTab {
     const { containerEl } = this;
     containerEl.empty();
 
-    // 剪贴板自动上传设置
+    // 剪贴板自动上传设置 — toggle 点完即存
     new Setting(containerEl)
       .setName(t("settings.autoUploadClipboard"))
       .setDesc(t("settings.autoUploadClipboard.desc"))
@@ -112,11 +119,11 @@ export class SettingTab extends PluginSettingTab {
           .onChange(async value => {
             this.plugin.settings.uploadByClipSwitch = value;
             await this.plugin.saveSettings();
-            // 重新初始化上传器以应用新设置
             this.plugin.uploader?.updateSetting("uploadByClipSwitch", value);
           })
       );
 
+    // 附件自动上传设置 — toggle 点完即存
     new Setting(containerEl)
       .setName(t("settings.autoUploadAttachments"))
       .setDesc(t("settings.autoUploadAttachments.desc"))
@@ -126,14 +133,11 @@ export class SettingTab extends PluginSettingTab {
           .onChange(async value => {
             this.plugin.settings.uploadAttachmentsSwitch = value;
             await this.plugin.saveSettings();
-            // 重新初始化上传器以应用新设置
-            this.plugin.uploader?.updateSetting(
-              "uploadAttachmentsSwitch",
-              value
-            );
+            this.plugin.uploader?.updateSetting("uploadAttachmentsSwitch", value);
           })
       );
 
+    // 上传器版本 — dropdown 选完即存
     new Setting(containerEl)
       .setName(t("settings.defaultUploader"))
       .setDesc(t("settings.defaultUploader.desc"))
@@ -151,67 +155,80 @@ export class SettingTab extends PluginSettingTab {
           })
       );
 
-    // 无论选择哪个版本，都显示基本设置
+    // ── 以下文本输入类：onChange 只更新内存，blur 才持久化 ──
+
+    // 服务器地址 — 失焦保存
     new Setting(containerEl)
       .setName(t("settings.serverDomain"))
       .setDesc(t("settings.serverDomain.desc"))
-      .addText(text =>
+      .addText(text => {
         text
           .setPlaceholder(t("settings.serverDomain.placeholder"))
           .setValue(this.plugin.settings.uploadServer)
-          .onChange(async key => {
+          .onChange(key => {
             this.plugin.settings.uploadServer = key;
-            await this.plugin.saveSettings();
-            // 重新初始化上传器以应用新域名
             this.plugin.uploader?.updateSetting("uploadServer", key);
-          })
-      );
+          });
+        text.inputEl.addEventListener("blur", () => {
+          void this.plugin.saveSettings();
+        });
+      });
+
+    // API 密钥 — 失焦保存
     new Setting(containerEl)
       .setName(t("settings.token"))
       .setDesc(t("settings.token.desc"))
-      .addText(text =>
+      .addText(text => {
         text
           .setPlaceholder(t("settings.token.placeholder"))
           .setValue(this.plugin.settings.token)
-          .onChange(async key => {
+          .onChange(key => {
             this.plugin.settings.token = key;
-            await this.plugin.saveSettings();
-            // 重新初始化上传器以应用新Token
             this.plugin.uploader?.updateSetting("token", key);
-          })
-      );
+          });
+        text.inputEl.addEventListener("blur", () => {
+          void this.plugin.saveSettings();
+        });
+      });
 
-    // 根据版本显示对应的存储ID设置
+    // 存储ID / 策略ID — 失焦保存
     if (parseUploaderVersion(this.plugin.settings.uploader) === "v2") {
       new Setting(containerEl)
         .setName(t("settings.storageId"))
         .setDesc(t("settings.storageId.desc"))
-        .addText(text =>
+        .addText(text => {
           text
             .setPlaceholder(t("settings.storageId.placeholder"))
             .setValue(this.plugin.settings.storage_id)
-            .onChange(async key => {
+            .onChange(key => {
               this.plugin.settings.storage_id = key;
-              await this.plugin.saveSettings();
               this.plugin.uploader?.updateSetting("storage_id", key);
-            })
-        );
+            });
+          text.inputEl.addEventListener("blur", () => {
+            void this.plugin.saveSettings();
+          });
+        });
     } else {
       new Setting(containerEl)
         .setName(t("settings.strategyId"))
         .setDesc(t("settings.strategyId.desc"))
-        .addText(text =>
+        .addText(text => {
           text
             .setPlaceholder(t("settings.strategyId.placeholder"))
             .setValue(this.plugin.settings.strategy_id)
-            .onChange(async key => {
+            .onChange(key => {
               this.plugin.settings.strategy_id = key;
-              await this.plugin.saveSettings();
               this.plugin.uploader?.updateSetting("strategy_id", key);
-            })
-        );
+            });
+          text.inputEl.addEventListener("blur", () => {
+            void this.plugin.saveSettings();
+          });
+        });
     }
 
+    // ── 以下切换类/下拉类：点完即存 ──
+
+    // 处理网络图片 — toggle 点完即存
     new Setting(containerEl)
       .setName(t("settings.workOnNetwork"))
       .setDesc(t("settings.workOnNetwork.desc"))
@@ -222,25 +239,27 @@ export class SettingTab extends PluginSettingTab {
             this.plugin.settings.workOnNetWork = value;
             this.display();
             await this.plugin.saveSettings();
-            // 重新初始化上传器以应用新设置
             this.plugin.uploader?.updateSetting("workOnNetWork", value);
           })
       );
 
+    // 黑名单域名 — TextArea 失焦保存
     new Setting(containerEl)
       .setName(t("settings.blacklist"))
       .setDesc(t("settings.blacklist.desc"))
-      .addTextArea(textArea =>
+      .addTextArea(textArea => {
         textArea
           .setValue(this.plugin.settings.newWorkBlackDomains)
-          .onChange(async value => {
+          .onChange(value => {
             this.plugin.settings.newWorkBlackDomains = value;
-            await this.plugin.saveSettings();
-            // 重新初始化上传器以应用新黑名单
             this.plugin.uploader?.updateSetting("newWorkBlackDomains", value);
-          })
-      );
+          });
+        textArea.inputEl.addEventListener("blur", () => {
+          void this.plugin.saveSettings();
+        });
+      });
 
+    // 上传后删除源文件 — toggle 点完即存
     new Setting(containerEl)
       .setName(t("settings.deleteSource"))
       .setDesc(t("settings.deleteSource.desc"))
@@ -251,11 +270,11 @@ export class SettingTab extends PluginSettingTab {
             this.plugin.settings.deleteSource = value;
             this.display();
             await this.plugin.saveSettings();
-            // 重新初始化上传器以应用新设置
             this.plugin.uploader?.updateSetting("deleteSource", value);
           })
       );
 
+    // 并发模式 — dropdown 选完即存
     new Setting(containerEl)
       .setName(t("settings.concurrency"))
       .setDesc(t("settings.concurrency.desc"))
@@ -268,19 +287,15 @@ export class SettingTab extends PluginSettingTab {
           async (value: ConcurrencyLevel) => {
             this.plugin.settings.concurrencyMode = value;
             await this.plugin.saveSettings();
-
             const modeLabel = t(concurrencyKeys[value]);
-            const message = `${t(
-              "settings.concurrency.switched"
-            )} ${modeLabel}`;
-
+            const message = `${t("settings.concurrency.switched")} ${modeLabel}`;
             new Notice(message);
-            // 重新初始化上传器以应用新并发模式
             this.plugin.uploader?.updateSetting("concurrencyMode", value);
           }
         );
       });
 
+    // 调试模式 — toggle 点完即存
     new Setting(containerEl)
       .setName(t("settings.debugMode"))
       .setDesc(t("settings.debugMode.desc"))
@@ -288,7 +303,6 @@ export class SettingTab extends PluginSettingTab {
         toggle.setValue(this.plugin.settings.debug).onChange(async value => {
           this.plugin.settings.debug = value;
           await this.plugin.saveSettings();
-          // 直接更新调试模式状态
           debugState.enabled = value;
           if (value) {
             new Notice(t("settings.debugMode.enabled"));

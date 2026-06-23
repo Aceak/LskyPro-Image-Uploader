@@ -96,7 +96,8 @@ export function getExtname(path: string): string {
  * @returns 如果是支持的图片格式返回 true，否则返回 false
  */
 export function isAnImage(ext: string) {
-  return IMAGE_EXT_LIST.includes(ext.toLowerCase());
+  const normalized = ext.startsWith(".") ? ext.toLowerCase() : "." + ext.toLowerCase();
+  return IMAGE_EXT_LIST.includes(normalized);
 }
 
 /**
@@ -302,5 +303,13 @@ export type ApiVersion = "v1" | "v2";
 
 /** 将设置字段转为内部版本号（大小写不敏感，兼容历史大写，null 安全） */
 export function parseUploaderVersion(raw: string | null | undefined): ApiVersion {
-  return String(raw ?? "").toLowerCase() === "lskypro-v1" ? "v1" : "v2";
+  const s = String(raw ?? "").toLowerCase();
+  // 兼容旧版数据中可能存在的 "v1"/"v2" 简写
+  if (s === "lskypro-v1" || s === "v1") return "v1";
+  return "v2";
+}
+
+/** 编码为 Markdown 图片链接安全的 URL：在 encodeURI 基础上额外编码 () # 等破坏链接的字符 */
+export function encodeMarkdownUrl(path: string): string {
+  return encodeURI(path).replace(/[()#]/g, c => "%" + c.charCodeAt(0).toString(16).toUpperCase());
 }

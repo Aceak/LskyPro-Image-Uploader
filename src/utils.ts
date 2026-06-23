@@ -311,5 +311,5 @@ export function parseUploaderVersion(raw: string | null | undefined): ApiVersion
 
 /** 编码为 Markdown 图片链接安全的 URL：在 encodeURI 基础上额外编码 () # 等破坏链接的字符 */
 export function encodeMarkdownUrl(path: string): string {
-  return encodeURI(path).replace(/[()#]/g, c => "%" + c.charCodeAt(0).toString(16).toUpperCase());
+  return encodeURI(path).replace(/[()#]/g, c => "%" + c.charCodeAt(0).toString(16).toUpperCase().padStart(2, "0"));
 }

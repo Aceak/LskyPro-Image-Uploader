@@ -95,10 +95,18 @@ export class SettingTab extends PluginSettingTab {
   }
 
   /**
-   * 设置标签页关闭时自动保存——防止失焦文本输入丢失未提交的更改
+   * 设置标签页关闭时自动保存 + 同步上传器缓存
+   * ——防止 blur 未触发时 token/URL 等文本输入变更未生效
    */
   hide(): void {
-    void this.plugin.saveSettings();
+    const s = this.plugin.settings;
+    // 同步所有文本输入字段到上传器（token/uploadServer 会触发 initializeConfig 刷新缓存）
+    this.plugin.uploader?.updateSetting("uploadServer", s.uploadServer);
+    this.plugin.uploader?.updateSetting("token", s.token);
+    this.plugin.uploader?.updateSetting("storage_id", s.storage_id);
+    this.plugin.uploader?.updateSetting("strategy_id", s.strategy_id);
+    this.plugin.uploader?.updateSetting("newWorkBlackDomains", s.newWorkBlackDomains);
+    this.plugin.saveSettings().catch(e => console.error("[Lsky] Save settings failed:", e));
   }
 
   /**
@@ -157,7 +165,7 @@ export class SettingTab extends PluginSettingTab {
 
     // ── 以下文本输入类：onChange 只更新内存，blur 才持久化 ──
 
-    // 服务器地址 — 失焦保存
+    // 服务器地址 — onChange 只更新内存，失焦才持久化并通知上传器
     new Setting(containerEl)
       .setName(t("settings.serverDomain"))
       .setDesc(t("settings.serverDomain.desc"))
@@ -167,14 +175,15 @@ export class SettingTab extends PluginSettingTab {
           .setValue(this.plugin.settings.uploadServer)
           .onChange(key => {
             this.plugin.settings.uploadServer = key;
-            this.plugin.uploader?.updateSetting("uploadServer", key);
+            // 不在这里通知上传器——避免逐字 rebuild URL
           });
         text.inputEl.addEventListener("blur", () => {
-          void this.plugin.saveSettings();
+          this.plugin.uploader?.updateSetting("uploadServer", this.plugin.settings.uploadServer);
+          void this.plugin.saveSettings().catch(e => console.error("[Lsky] Save failed:", e));
         });
       });
 
-    // API 密钥 — 失焦保存
+    // API 密钥 — onChange 只更新内存，失焦才持久化并通知上传器
     new Setting(containerEl)
       .setName(t("settings.token"))
       .setDesc(t("settings.token.desc"))
@@ -184,14 +193,15 @@ export class SettingTab extends PluginSettingTab {
           .setValue(this.plugin.settings.token)
           .onChange(key => {
             this.plugin.settings.token = key;
-            this.plugin.uploader?.updateSetting("token", key);
+            // 不在这里通知上传器——避免逐字 rebuild token
           });
         text.inputEl.addEventListener("blur", () => {
-          void this.plugin.saveSettings();
+          this.plugin.uploader?.updateSetting("token", this.plugin.settings.token);
+          void this.plugin.saveSettings().catch(e => console.error("[Lsky] Save failed:", e));
         });
       });
 
-    // 存储ID / 策略ID — 失焦保存
+    // 存储ID / 策略ID — 失焦更新上传器 + 保存
     if (parseUploaderVersion(this.plugin.settings.uploader) === "v2") {
       new Setting(containerEl)
         .setName(t("settings.storageId"))
@@ -202,10 +212,10 @@ export class SettingTab extends PluginSettingTab {
             .setValue(this.plugin.settings.storage_id)
             .onChange(key => {
               this.plugin.settings.storage_id = key;
-              this.plugin.uploader?.updateSetting("storage_id", key);
             });
           text.inputEl.addEventListener("blur", () => {
-            void this.plugin.saveSettings();
+            this.plugin.uploader?.updateSetting("storage_id", this.plugin.settings.storage_id);
+            void this.plugin.saveSettings().catch(e => console.error("[Lsky] Save failed:", e));
           });
         });
     } else {
@@ -218,10 +228,10 @@ export class SettingTab extends PluginSettingTab {
             .setValue(this.plugin.settings.strategy_id)
             .onChange(key => {
               this.plugin.settings.strategy_id = key;
-              this.plugin.uploader?.updateSetting("strategy_id", key);
             });
           text.inputEl.addEventListener("blur", () => {
-            void this.plugin.saveSettings();
+            this.plugin.uploader?.updateSetting("strategy_id", this.plugin.settings.strategy_id);
+            void this.plugin.saveSettings().catch(e => console.error("[Lsky] Save failed:", e));
           });
         });
     }
@@ -243,7 +253,7 @@ export class SettingTab extends PluginSettingTab {
           })
       );
 
-    // 黑名单域名 — TextArea 失焦保存
+    // 黑名单域名 — TextArea 失焦更新上传器 + 保存
     new Setting(containerEl)
       .setName(t("settings.blacklist"))
       .setDesc(t("settings.blacklist.desc"))
@@ -252,10 +262,10 @@ export class SettingTab extends PluginSettingTab {
           .setValue(this.plugin.settings.newWorkBlackDomains)
           .onChange(value => {
             this.plugin.settings.newWorkBlackDomains = value;
-            this.plugin.uploader?.updateSetting("newWorkBlackDomains", value);
           });
         textArea.inputEl.addEventListener("blur", () => {
-          void this.plugin.saveSettings();
+          this.plugin.uploader?.updateSetting("newWorkBlackDomains", this.plugin.settings.newWorkBlackDomains);
+          void this.plugin.saveSettings().catch(e => console.error("[Lsky] Save failed:", e));
         });
       });
 

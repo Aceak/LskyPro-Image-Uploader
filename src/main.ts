@@ -212,17 +212,19 @@ export default class imageAutoUploadPlugin extends Plugin {
               return;
             }
 
-            // 提前读取文件数据，防止 preventDefault 后数据丢失
+            // ⚠️ 必须在任何 await 之前同步阻止默认粘贴
+            // 否则 Obsidian 会先保存 Paste image xxx.png 并插入 ![[...]]
+            evt.preventDefault();
+
+            // preventDefault 后再读 buffer——File 对象引用已在 preventDefault 前捕获，数据仍可读
             const fileBuffer = await clipboardFile.arrayBuffer();
 
-            // 先保存到本地——成功后再 preventDefault，失败则让浏览器正常处理
+            // 先保存到本地
             const savedPath = await this.saveImageToVault(fileBuffer, clipboardFile.name);
             if (!savedPath) {
               new Notice(t("upload.failedNotice"));
               return;
             }
-
-            evt.preventDefault();
 
             // 先插入本地引用，记录光标所在行
             editor.replaceSelection(`![](${encodeMarkdownUrl(savedPath)})\n`);
@@ -276,8 +278,11 @@ export default class imageAutoUploadPlugin extends Plugin {
           const dropFiles = evt.dataTransfer?.files;
           if (!dropFiles?.length || !dropFiles[0].type.startsWith("image")) return;
 
-          // 提前读取所有文件数据
+          // ⚠️ 必须在任何 await 之前同步阻止默认拖拽
           const droppedFiles = Array.from(dropFiles);
+          evt.preventDefault();
+
+          // 读取所有文件数据
           const fileBuffers: ArrayBuffer[] = await Promise.all(
             droppedFiles.map(f => f.arrayBuffer())
           );
@@ -298,12 +303,10 @@ export default class imageAutoUploadPlugin extends Plugin {
             }
           }
 
-          // 全部保存失败则让浏览器正常处理；成功至少一个才拦截默认行为
           if (savedPaths.every(p => p === null)) {
             new Notice(t("upload.failedNotice"));
             return;
           }
-          evt.preventDefault();
 
           new Notice(t("upload.uploading"));
 

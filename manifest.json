@@ -1,8 +1,8 @@
 {
-  "id": "lskypro-upload-v2",
-  "name": "Lskypro Upload V2",
-  "version": "1.1.4",
-  "minAppVersion": "1.8.0",
+  "id": "lskypro-image-uploader",
+  "name": "LskyPro Image Uploader",
+  "version": "1.2.0",
+  "minAppVersion": "1.8.7",
   "description": "Auto upload local images to LskyPro.",
   "author": "3kk0",
   "authorUrl": "https://wiki.stxwer.top",

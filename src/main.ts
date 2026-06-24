@@ -171,6 +171,7 @@ export default class imageAutoUploadPlugin extends Plugin {
       this.app.workspace.on(
         "editor-paste",
         async (evt: ClipboardEvent, editor: Editor) => {
+          if (evt.defaultPrevented) return;
           const allowUpload = this.helper.getFrontmatterValue(
             "image-auto-upload",
             this.settings.uploadByClipSwitch
@@ -228,6 +229,7 @@ export default class imageAutoUploadPlugin extends Plugin {
       this.app.workspace.on(
         "editor-drop",
         async (evt: DragEvent, editor: Editor) => {
+          if (evt.defaultPrevented) return;
           const allowUpload = this.helper.getFrontmatterValue(
             "image-auto-upload",
             this.settings.uploadByClipSwitch

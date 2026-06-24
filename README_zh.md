@@ -1,5 +1,7 @@
-# LskyPro Upload V2  
+# LskyPro Image Uploader
 **适用于 Obsidian 的自动图床上传插件**
+
+> 原 [LskyPro Upload V2](https://github.com/Aceak/Lskypro-Upload-V2)（`lskypro-upload-v2`）。
 
 简体中文 | [English](README.md)
 
@@ -35,7 +37,7 @@
 
 ### 插件配置步骤
 
-1. 打开 **Obsidian → 设置 → 第三方插件 → LskyPro Upload V2**  
+1. 打开 **Obsidian → 设置 → 第三方插件 → LskyPro Image Uploader**  
 2. 按以下顺序填写基本配置：
 
 | 配置项 | 说明 |
@@ -160,6 +162,7 @@
 
 - 图片压缩选项
 - 更多上传状态提示
+- 修复 frontmatter `image-auto-upload` 覆盖设置在粘贴和拖拽处理中的不一致行为
 
 ---
 

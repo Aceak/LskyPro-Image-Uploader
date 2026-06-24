@@ -1,5 +1,7 @@
-# LskyPro Upload V2
+# LskyPro Image Uploader
 **An automatic image uploader plugin for Obsidian**
+
+> Formerly [LskyPro Upload V2](https://github.com/Aceak/Lskypro-Upload-V2) (`lskypro-upload-v2`).
 
 English | [简体中文](README_zh.md)
 
@@ -35,7 +37,7 @@ Before using this plugin, make sure you have:
 
 ### Plugin Setup
 
-1. Open **Obsidian → Settings → Community Plugins → LskyPro Upload V2**  
+1. Open **Obsidian → Settings → Community Plugins → LskyPro Image Uploader**  
 2. Fill in the basic configuration fields:
 
 | Field | Description |
@@ -160,6 +162,7 @@ Reference: [Lsky Pro API Documentation](https://lsky-pro.apifox.cn).
 
 - Image compression options
 - Enhanced upload status notifications
+- Fix frontmatter `image-auto-upload` override inconsistency between paste and drop handlers
 
 ---
 

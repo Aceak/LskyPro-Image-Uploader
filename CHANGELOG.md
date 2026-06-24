@@ -2,7 +2,61 @@
 
 ---
 
-## [1.1.4] - Unreleased
+## [1.2.0] - Unreleased
+
+# Release Notes
+
+## ⚠️ Breaking Changes
+- **Plugin Renamed**  
+  Renamed from **LskyPro Upload V2** to **LskyPro Image Uploader** to comply with Obsidian's plugin naming guidelines.  
+  Plugin ID changed from `lskypro-upload-v2` to `lskypro-image-uploader`.
+
+  Obsidian will treat this as a new plugin. To migrate your settings, copy:  
+  `.obsidian/plugins/lskypro-upload-v2/data.json` → `.obsidian/plugins/lskypro-image-uploader/data.json`
+
+- **Bumped `minAppVersion` to 1.8.7**  
+  `getLanguage()` was introduced in Obsidian 1.8.7. The previous `minAppVersion: 1.8.0` could cause a crash on versions 1.8.0–1.8.6.
+
+## 🧩 Fixes
+- Added `evt.defaultPrevented` guard at the start of `editor-paste` handler to avoid conflicts with other plugins.
+- Added `evt.defaultPrevented` guard at the start of `editor-drop` handler to avoid duplicate processing.
+
+## ✨ Improvements
+- Updated plugin metadata, README, and documentation to reflect the new name.
+
+## 🧪 Compatibility
+- ✅ Compatible with existing LskyPro V1 / V2 API configurations  
+- ⚠️ Plugin settings need manual migration (see above)
+
+---
+
+# 更新日志
+
+## ⚠️ 重要变更
+- **插件更名**  
+  因 Obsidian 插件规范要求，插件名称由 **LskyPro Upload V2** 更名为 **LskyPro Image Uploader**。  
+  插件 ID 由 `lskypro-upload-v2` 变更为 `lskypro-image-uploader`。
+
+  Obsidian 会将其识别为新插件。如需迁移旧设置，请手动拷贝：  
+  `.obsidian/plugins/lskypro-upload-v2/data.json` → `.obsidian/plugins/lskypro-image-uploader/data.json`
+
+- **`minAppVersion` 提升至 1.8.7**  
+  `getLanguage()` 在 Obsidian 1.8.7 才引入，旧版 `minAppVersion: 1.8.0` 可能导致 1.8.0–1.8.6 版本的用户崩溃。
+
+## 🧩 问题修复
+- `editor-paste` 处理器开头增加 `evt.defaultPrevented` 检查，避免与其他插件冲突。
+- `editor-drop` 处理器开头增加 `evt.defaultPrevented` 检查，避免重复处理。
+
+## ✨ 优化改进
+- 更新插件元数据、README 及文档以反映新名称。
+
+## 🧪 兼容性
+- ✅ 兼容现有 LskyPro V1 / V2 API 配置  
+- ⚠️ 插件设置需手动迁移（见上方说明）
+
+---
+
+## [1.1.4] - 2026-06-24
 
 # Release Notes
 
@@ -386,3 +440,12 @@
 - ✅ 测试环境：Obsidian v1.9.14
 - ✅ 测试系统：Windows 10 / 11
 - 🧠 适用于所有 Obsidian 支持的平台
+
+[Unreleased]: https://github.com/Aceak/Lskypro-Upload-V2/compare/1.2.0...main
+[1.2.0]: https://github.com/Aceak/Lskypro-Upload-V2/compare/1.1.4...1.2.0
+[1.1.4]: https://github.com/Aceak/Lskypro-Upload-V2/compare/1.1.3...1.1.4
+[1.1.3]: https://github.com/Aceak/Lskypro-Upload-V2/compare/1.1.2...1.1.3
+[1.1.2]: https://github.com/Aceak/Lskypro-Upload-V2/compare/1.1.1...1.1.2
+[1.1.1]: https://github.com/Aceak/Lskypro-Upload-V2/compare/1.1.0...1.1.1
+[1.1.0]: https://github.com/Aceak/Lskypro-Upload-V2/compare/1.0.0...1.1.0
+[1.0.0]: https://github.com/Aceak/Lskypro-Upload-V2/releases/tag/1.0.0

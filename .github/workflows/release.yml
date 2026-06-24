@@ -91,7 +91,7 @@ jobs:
         with:
           tag_name: ${{ github.ref_name }}
           name: Release ${{ github.ref_name }}
-          draft: true
+          draft: false
           body_path: release-notes.md
           files: |
             dist/main.js

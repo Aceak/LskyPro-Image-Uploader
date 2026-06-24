@@ -277,22 +277,22 @@ export function getPlatformEnv(app: App) {
   return "";
 }
 
+/** 并发级别 → 数值映射 */
+export const CONCURRENCY_MAP: Record<string, number> = {
+  low: 1,
+  medium: 3,
+  high: 5,
+};
+
 // 获取并发值
 export function getConcurrencyValue(mode: string | number | undefined): number {
   if (typeof mode === "number") return mode;
-
   if (!mode) return 3;
-
-  const map: Record<string, number> = {
-    low: 1,
-    medium: 3,
-    high: 5,
-  };
 
   const parsed = Number(mode);
   if (!isNaN(parsed) && parsed > 0) return parsed;
 
-  return map[mode] ?? 3;
+  return CONCURRENCY_MAP[mode] ?? 3;
 }
 
 /** 上传器版本标识常量——所有版本判断都走这里，不再硬编码字符串 */

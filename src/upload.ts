@@ -360,7 +360,7 @@ export class LskyProUploader {
         };
       }
 
-      return { success: true, result: urls.filter((u): u is string => u !== null) };
+      return { success: true, result: urls };
     } catch (err) {
       const message =
         err instanceof Error ? err.message : t("upload.batchFailed");

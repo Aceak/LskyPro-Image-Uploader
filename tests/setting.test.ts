@@ -5,9 +5,9 @@ import { describe, it, expect } from "vitest";
 import {
   DEFAULT_SETTINGS,
   getSettingLabel,
-  ConcurrencyMap,
   concurrencyKeys,
 } from "../src/setting";
+import { CONCURRENCY_MAP } from "../src/utils";
 import { UPLOADER_V2 } from "../src/utils";
 
 describe("DEFAULT_SETTINGS", () => {
@@ -65,10 +65,10 @@ describe("getSettingLabel", () => {
   });
 });
 
-describe("ConcurrencyMap", () => {
-  it("low → 1", () => expect(ConcurrencyMap.low).toBe(1));
-  it("medium → 3", () => expect(ConcurrencyMap.medium).toBe(3));
-  it("high → 5", () => expect(ConcurrencyMap.high).toBe(5));
+describe("CONCURRENCY_MAP (from utils)", () => {
+  it("low → 1", () => expect(CONCURRENCY_MAP.low).toBe(1));
+  it("medium → 3", () => expect(CONCURRENCY_MAP.medium).toBe(3));
+  it("high → 5", () => expect(CONCURRENCY_MAP.high).toBe(5));
 });
 
 describe("concurrencyKeys", () => {

@@ -65,12 +65,6 @@ export const getSettingLabel = (key: keyof PluginSettings): string => {
 
 export type ConcurrencyLevel = "low" | "medium" | "high";
 
-export const ConcurrencyMap: Record<ConcurrencyLevel, number> = {
-  low: 1,
-  medium: 3,
-  high: 5,
-};
-
 export const concurrencyKeys: Record<ConcurrencyLevel, TranslationKeys> = {
   low: "settings.concurrency.low",
   medium: "settings.concurrency.medium",

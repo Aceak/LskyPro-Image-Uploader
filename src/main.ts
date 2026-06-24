@@ -213,49 +213,11 @@ export default class imageAutoUploadPlugin extends Plugin {
             }
 
             // ⚠️ 必须在任何 await 之前同步阻止默认粘贴
-            // 否则 Obsidian 会先保存 Paste image xxx.png 并插入 ![[...]]
             evt.preventDefault();
 
-            // preventDefault 后再读 buffer——File 对象引用已在 preventDefault 前捕获，数据仍可读
+            // preventDefault 后再读 buffer——File 引用已在 preventDefault 前捕获
             const fileBuffer = await clipboardFile.arrayBuffer();
-
-            // 先保存到本地
-            const savedPath = await this.saveImageToVault(fileBuffer, clipboardFile.name);
-            if (!savedPath) {
-              new Notice(t("upload.failedNotice"));
-              return;
-            }
-
-            // 先插入本地引用，记录光标所在行
-            editor.replaceSelection(`![](${encodeMarkdownUrl(savedPath)})\n`);
-            const insertLine = editor.getCursor().line;
-            new Notice(t("upload.uploading"));
-
-            try {
-              const res = await this.uploader.uploadSingleFile(clipboardFile);
-              if (!res.success) {
-                // 上传失败：保留本地引用不动，弹错误提示
-                new Notice(t("upload.failedShort") + ": " + (res.msg || t("upload.exception")));
-                error(t("upload.error") + ":" + (res.msg ?? ""));
-                return;
-              }
-
-              const url = res.url || "";
-              // 上传成功：替换本地引用为远端 URL
-              imageAutoUploadPlugin.replaceFirstOccurrence(
-                editor,
-                `![](${encodeMarkdownUrl(savedPath)})`,
-                `![](${url})`,
-                insertLine
-              );
-              this.appendUploadedUrls(res.url ? [res.url] : []);
-              new Notice(t("upload.success"));
-            } catch (err) {
-              // 远端上传异常：保留本地引用不动
-              const reason = err instanceof Error ? err.message : String(err);
-              new Notice(t("upload.failedShort") + ": " + reason);
-              error(t("upload.error") + ":", err);
-            }
+            await this.processPastedImages(editor, [clipboardFile], [fileBuffer]);
           }
         }
       )
@@ -283,74 +245,8 @@ export default class imageAutoUploadPlugin extends Plugin {
           evt.preventDefault();
 
           // 读取所有文件数据
-          const fileBuffers: ArrayBuffer[] = await Promise.all(
-            droppedFiles.map(f => f.arrayBuffer())
-          );
-
-          // 先全部保存到本地，插入本地引用，记录每个文件的插入行
-          const savedPaths: (string | null)[] = [];
-          const insertLines: (number | undefined)[] = [];
-          const uploadQueue: { file: File; index: number }[] = [];
-          for (let i = 0; i < droppedFiles.length; i++) {
-            const savedPath = await this.saveImageToVault(fileBuffers[i], droppedFiles[i].name);
-            savedPaths.push(savedPath);
-            if (savedPath) {
-              editor.replaceSelection(`![](${encodeMarkdownUrl(savedPath)})\n`);
-              insertLines.push(editor.getCursor().line);
-              uploadQueue.push({ file: droppedFiles[i], index: i });
-            } else {
-              insertLines.push(undefined);
-            }
-          }
-
-          if (savedPaths.every(p => p === null)) {
-            new Notice(t("upload.failedNotice"));
-            return;
-          }
-
-          new Notice(t("upload.uploading"));
-
-          try {
-            // 仅上传本地保存成功的文件，避免幽灵 URL
-            const res = await this.uploader.uploadFiles(uploadQueue.map(q => q.file));
-
-            // 处理结果：将 upload 返回的 URL 映射回原始 savedPaths 索引
-            const resultUrls: (string | null)[] = new Array<(string | null)>(droppedFiles.length).fill(null);
-            if (res.result) {
-              for (let j = 0; j < uploadQueue.length && j < res.result.length; j++) {
-                resultUrls[uploadQueue[j].index] = res.result[j];
-              }
-            }
-
-            // 处理结果：即使部分失败，也要替换成功的 URL
-            const hasAnyResult = resultUrls.some(u => u !== null);
-            if (hasAnyResult) {
-              for (let i = 0; i < resultUrls.length; i++) {
-                if (resultUrls[i] && savedPaths[i]) {
-                  imageAutoUploadPlugin.replaceFirstOccurrence(
-                    editor,
-                    `![](${encodeMarkdownUrl(savedPaths[i])})`,
-                    `![](${resultUrls[i]})`,
-                    insertLines[i]
-                  );
-                }
-              }
-              this.appendUploadedUrls(resultUrls);
-              if (res.success) {
-                new Notice(t("upload.success"));
-              } else {
-                new Notice(t("upload.someFailed"));
-              }
-            } else {
-              new Notice(t("upload.failedShort") + ": " + (res.msg || t("upload.exception")));
-              error(t("upload.error") + ":" + (res.msg ?? ""));
-            }
-          } catch (err) {
-            // 远端上传异常：保留本地引用
-            const reason = err instanceof Error ? err.message : String(err);
-            new Notice(t("upload.failedShort") + ": " + reason);
-            error(t("upload.error") + ":", err);
-          }
+          const buffers = await Promise.all(droppedFiles.map(f => f.arrayBuffer()));
+          await this.processPastedImages(editor, droppedFiles, buffers);
         }
       )
     );
@@ -723,6 +619,94 @@ export default class imageAutoUploadPlugin extends Plugin {
     } catch (e) {
       error("[saveImageToVault] Failed:", e);
       return null;
+    }
+  }
+
+  /**
+   * 处理粘贴/拖拽的本地图片：保存到 vault → 插入引用 → 上传 → 替换远端
+   * 单文件与多文件统一入口
+   */
+  private async processPastedImages(
+    editor: Editor,
+    files: File[],
+    buffers: ArrayBuffer[]
+  ): Promise<void> {
+    // ① 保存到 vault 并插入本地 ![](path) 引用
+    const savedPaths: (string | null)[] = [];
+    const insertLines: (number | undefined)[] = [];
+    const uploadQueue: { file: File; index: number }[] = [];
+
+    for (let i = 0; i < files.length; i++) {
+      const savedPath = await this.saveImageToVault(buffers[i], files[i].name);
+      savedPaths.push(savedPath);
+      if (savedPath) {
+        editor.replaceSelection(`![](${encodeMarkdownUrl(savedPath)})\n`);
+        // 末尾 \n 把光标推到下一行，回退一行才是目标所在行
+        insertLines.push(editor.getCursor().line - 1);
+        uploadQueue.push({ file: files[i], index: i });
+      } else {
+        insertLines.push(undefined);
+      }
+    }
+
+    if (savedPaths.every(p => p === null)) {
+      new Notice(t("upload.failedNotice"));
+      return;
+    }
+
+    new Notice(t("upload.uploading"));
+
+    // ② 仅上传本地保存成功的文件，避免幽灵 URL
+    try {
+      const res = await this.uploader.uploadFiles(uploadQueue.map(q => q.file));
+
+      // ③ 映射 uploadFiles 结果回原始 files 索引（null 占位失败项）
+      const resultUrls: (string | null)[] = new Array(files.length).fill(null);
+      if (res.result) {
+        for (let j = 0; j < uploadQueue.length && j < res.result.length; j++) {
+          resultUrls[uploadQueue[j].index] = res.result[j];
+        }
+      }
+
+      // ④ 替换成功的本地引用为远端 URL；失败/无效的保留本地引用
+      if (resultUrls.some(u => u !== null)) {
+        for (let i = 0; i < resultUrls.length; i++) {
+          const url = resultUrls[i];
+          const sp = savedPaths[i];
+          if (url && sp) {
+            imageAutoUploadPlugin.replaceFirstOccurrence(
+              editor,
+              `![](${encodeMarkdownUrl(sp)})`,
+              `![](${url})`,
+              insertLines[i]
+            );
+          }
+        }
+        this.appendUploadedUrls(resultUrls);
+        // 上传成功后按配置删除本地文件
+        if (this.settings.deleteSource) {
+          for (const { index } of uploadQueue) {
+            if (resultUrls[index] && savedPaths[index]) {
+              const fileDel = this.app.vault.getAbstractFileByPath(
+                normalizePath(savedPaths[index]!)
+              );
+              if (fileDel) await this.app.fileManager.trashFile(fileDel);
+            }
+          }
+        }
+        if (res.success) {
+          new Notice(t("upload.success"));
+        } else {
+          new Notice(t("upload.someFailed"));
+        }
+      } else {
+        new Notice(t("upload.failedShort") + ": " + (res.msg || t("upload.exception")));
+        error(t("upload.error") + ":" + (res.msg ?? ""));
+      }
+    } catch (err) {
+      const reason = err instanceof Error ? err.message : String(err);
+      new Notice(t("upload.failedShort") + ": " + reason);
+      error(t("upload.error") + ":", err);
     }
   }
 

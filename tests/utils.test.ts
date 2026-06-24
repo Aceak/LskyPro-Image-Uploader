@@ -14,7 +14,6 @@ import {
   UPLOADER_V1,
   UPLOADER_V2,
   IMAGE_EXT_LIST,
-  IMAGE_MIME_MAP,
 } from "../src/utils";
 
 // ============================================================

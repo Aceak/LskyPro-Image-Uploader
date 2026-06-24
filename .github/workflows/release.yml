@@ -1,72 +1,98 @@
-name: Build and Release Plugin
+name: Release
 
 on:
   push:
-    tags:
-      - "*"
-  workflow_dispatch:
+    tags: ['*']
 
 jobs:
-  build:
+  check-ci:
     runs-on: ubuntu-latest
-
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - name: Wait for CI
+        run: |
+          wait_ci() {
+            for i in $(seq 1 30); do
+              run=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs?head_sha=$GITHUB_SHA" --jq '.workflow_runs[] | select(.name=="CI")')
+              conclusion=$(echo "$run" | jq -r '.conclusion')
+              status=$(echo "$run" | jq -r '.status')
+              if [ "$conclusion" = "success" ]; then
+                return 0
+              elif [ "$conclusion" = "failure" ]; then
+                echo "CI failed"
+                return 1
+              elif [ "$status" = "in_progress" ] || [ "$status" = "queued" ]; then
+                echo "Waiting for CI... ($i/30)"
+                sleep 5
+              else
+                echo "CI not started yet... ($i/30)"
+                sleep 5
+              fi
+            done
+            return 2
+          }
+          wait_ci
+          ret=$?
+          if [ $ret -eq 0 ]; then
+            echo "CI passed"
+          elif [ $ret -eq 1 ]; then
+            exit 1
+          else
+            echo "CI not complete, triggering re-run..."
+            gh workflow run CI --ref main
+            sleep 10
+            wait_ci
+            ret=$?
+            if [ $ret -eq 0 ]; then
+              echo "CI passed on retry"
+            else
+              echo "CI did not complete in time"
+              exit 1
+            fi
+          fi
+        env:
+          GH_TOKEN: ${{ github.token }}
+
+  release:
+    needs: check-ci
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: 22.20.0
           cache: "npm"
 
-      - name: Verify environment
-        run: |
-          node -v
-          npm -v
-
-      - name: Clean npm cache
-        run: npm cache clean --force
-
       - name: Install dependencies
         run: npm ci
 
-      - name: Determine tag name
-        id: get_tag
-        run: |
-          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
-            echo "Manual run → fetching latest tag..."
-            git fetch --tags
-            TAG=$(git tag --sort=-creatordate | head -n 1)
-            if [[ -z "$TAG" ]]; then
-              echo "No tags found in repository!"
-              exit 1
-            fi
-            echo "Using latest tag: $TAG"
-          else
-            TAG="${{ github.ref_name }}"
-            echo "Push event → Using tag: $TAG"
-          fi
-          echo "tag=$TAG" >> $GITHUB_OUTPUT
-
       - name: Build plugin
-        run: |
-          echo "Building plugin for tag: ${{ steps.get_tag.outputs.tag }}"
-          npm run build
-          echo "Build complete: main.js + manifest.json"
+        run: npm run build
 
-      - name: Verify build output
+      - name: Generate Release Notes
         run: |
-          ls -lh dist
+          VERSION="${GITHUB_REF#refs/tags/}"
+          PREV_TAG=$(git tag --sort=-creatordate | head -2 | tail -1)
+          awk -v ver="## [${VERSION}]" '
+            index($0,ver)==1 { found=1; next }
+            found && /^## \[/ { exit }
+            found
+          ' CHANGELOG.md > release-notes.md
+          echo "" >> release-notes.md
+          echo "**Full Changelog:** https://github.com/${{ github.repository }}/compare/${PREV_TAG}...${{ github.ref_name }}" >> release-notes.md
+          cat release-notes.md
 
-      - name: Create GitHub Release and upload assets
+      - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ steps.get_tag.outputs.tag }}
-          name: Release ${{ steps.get_tag.outputs.tag }}
+          tag_name: ${{ github.ref_name }}
+          name: Release ${{ github.ref_name }}
           draft: true
+          body_path: release-notes.md
           files: |
             dist/main.js
             manifest.json

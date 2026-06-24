@@ -688,7 +688,7 @@ export default class imageAutoUploadPlugin extends Plugin {
           for (const { index } of uploadQueue) {
             if (resultUrls[index] && savedPaths[index]) {
               const fileDel = this.app.vault.getAbstractFileByPath(
-                normalizePath(savedPaths[index]!)
+                normalizePath(savedPaths[index])
               );
               if (fileDel) await this.app.fileManager.trashFile(fileDel);
             }

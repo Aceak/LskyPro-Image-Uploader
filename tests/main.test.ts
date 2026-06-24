@@ -142,21 +142,21 @@ describe("replaceFirstOccurrence — 搜索逻辑", () => {
     const lines = ["![](same.png)", "中间", "![](same.png)"];
     const pos = searchBottomUp(lines, "![](same.png)");
     expect(pos).not.toBeNull();
-    expect(pos!.line).toBe(2);
+    expect(pos.line).toBe(2);
   });
 
   it("fromLine 跳过前面的匹配", () => {
     const lines = ["旧 ![](img.png)", "中间", "新 ![](img.png)"];
     const pos = searchFromLine(lines, "![](img.png)", 2);
     expect(pos).not.toBeNull();
-    expect(pos!.line).toBe(2);
+    expect(pos.line).toBe(2);
   });
 
   it("fromLine 未找到回退到底部搜索", () => {
     const lines = ["唯一 ![](a.png)", "其他"];
     const pos = searchFromLine(lines, "![](a.png)", 5);
     expect(pos).not.toBeNull();
-    expect(pos!.line).toBe(0);
+    expect(pos.line).toBe(0);
   });
 
   it("完全找不到返回 null", () => {

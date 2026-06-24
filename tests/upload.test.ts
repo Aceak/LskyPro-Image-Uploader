@@ -36,7 +36,7 @@ describe("buildMultipartBody", () => {
     const formData = new FormData();
     formData.append("strategy_id", "7");
 
-    const { body, contentType } = await buildMultipartBody(formData);
+    const { body } = await buildMultipartBody(formData);
     const text = new TextDecoder().decode(body);
     expect(text).toContain('name="strategy_id"');
     expect(text).toContain("7");

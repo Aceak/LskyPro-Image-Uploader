@@ -179,7 +179,7 @@ Special thanks to the following projects for inspiration and reference:
 
 - Author: **3kk0**  
 - Blog: [https://wiki.stxwer.top](https://wiki.stxwer.top)  
-- Project: [GitHub - Aceak/LskyPro-Upload-V2](https://github.com/Aceak/LskyPro-Upload-V2)
+- Project: [GitHub - Aceak/LskyPro-Image-Uploader](https://github.com/Aceak/LskyPro-Image-Uploader)
 
 ## 📜 License
 

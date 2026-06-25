@@ -441,11 +441,11 @@
 - ✅ 测试系统：Windows 10 / 11
 - 🧠 适用于所有 Obsidian 支持的平台
 
-[Unreleased]: https://github.com/Aceak/Lskypro-Upload-V2/compare/1.2.0...main
-[1.2.0]: https://github.com/Aceak/Lskypro-Upload-V2/compare/1.1.4...1.2.0
-[1.1.4]: https://github.com/Aceak/Lskypro-Upload-V2/compare/1.1.3...1.1.4
-[1.1.3]: https://github.com/Aceak/Lskypro-Upload-V2/compare/1.1.2...1.1.3
-[1.1.2]: https://github.com/Aceak/Lskypro-Upload-V2/compare/1.1.1...1.1.2
-[1.1.1]: https://github.com/Aceak/Lskypro-Upload-V2/compare/1.1.0...1.1.1
-[1.1.0]: https://github.com/Aceak/Lskypro-Upload-V2/compare/1.0.0...1.1.0
-[1.0.0]: https://github.com/Aceak/Lskypro-Upload-V2/releases/tag/1.0.0
+[Unreleased]: https://github.com/Aceak/LskyPro-Image-Uploader/compare/1.2.0...main
+[1.2.0]: https://github.com/Aceak/LskyPro-Image-Uploader/compare/1.1.4...1.2.0
+[1.1.4]: https://github.com/Aceak/LskyPro-Image-Uploader/compare/1.1.3...1.1.4
+[1.1.3]: https://github.com/Aceak/LskyPro-Image-Uploader/compare/1.1.2...1.1.3
+[1.1.2]: https://github.com/Aceak/LskyPro-Image-Uploader/compare/1.1.1...1.1.2
+[1.1.1]: https://github.com/Aceak/LskyPro-Image-Uploader/compare/1.1.0...1.1.1
+[1.1.0]: https://github.com/Aceak/LskyPro-Image-Uploader/compare/1.0.0...1.1.0
+[1.0.0]: https://github.com/Aceak/LskyPro-Image-Uploader/releases/tag/1.0.0

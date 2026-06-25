@@ -179,7 +179,7 @@
 
 - 作者：**3kk0**  
 - 博客：[https://wiki.stxwer.top](https://wiki.stxwer.top)  
-- 项目地址：[GitHub - Aceak/LskyPro-Upload-V2](https://github.com/Aceak/LskyPro-Upload-V2)
+- 项目地址：[GitHub - Aceak/LskyPro-Image-Uploader](https://github.com/Aceak/LskyPro-Image-Uploader)
 
 ## 📜 许可证
 

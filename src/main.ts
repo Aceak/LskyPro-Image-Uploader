@@ -53,8 +53,8 @@ export default class imageAutoUploadPlugin extends Plugin {
   uploader!: LskyProUploader; // 统一的上传器实例
 
   async loadSettings() {
-    const loaded = await this.loadData();
-    this.settings = Object.assign({}, DEFAULT_SETTINGS, loaded);
+    const loaded = await this.loadData() as Partial<PluginSettings> | undefined;
+    this.settings = Object.assign({}, DEFAULT_SETTINGS, loaded ?? {});
 
     if (typeof this.settings.debug !== "boolean") {
       this.settings.debug = false;
@@ -480,8 +480,7 @@ export default class imageAutoUploadPlugin extends Plugin {
 
   //获取附件路径（相对路径）
   getAttachmentFolderPath() {
-    // @ts-ignore - vault.config 无公开类型定义
-    const assetFolder: string = this.app.vault.config.attachmentFolderPath;
+    const assetFolder: string = (this.app.vault.config as Record<string, string>).attachmentFolderPath;
 
     dbg(t("attachmentPath.debug.original", { path: assetFolder }));
 
@@ -663,7 +662,7 @@ export default class imageAutoUploadPlugin extends Plugin {
       const res = await this.uploader.uploadFiles(uploadQueue.map(q => q.file));
 
       // ③ 映射 uploadFiles 结果回原始 files 索引（null 占位失败项）
-      const resultUrls: (string | null)[] = new Array(files.length).fill(null);
+      const resultUrls: (string | null)[] = new Array<string | null>(files.length).fill(null);
       if (res.result) {
         for (let j = 0; j < uploadQueue.length && j < res.result.length; j++) {
           resultUrls[uploadQueue[j].index] = res.result[j];

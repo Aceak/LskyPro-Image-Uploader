@@ -228,7 +228,7 @@ export class LskyProUploader {
       let json: LskyApiResponse;
       try {
           const text = res.text ?? "";
-          json = JSON.parse(text);
+          json = JSON.parse(text) as LskyApiResponse;
       } catch {
         return { success: false, msg: t('response.parseFailed') };
       }
